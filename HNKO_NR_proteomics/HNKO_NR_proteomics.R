@@ -11,6 +11,7 @@ library(biomaRt)
 library(org.Mm.eg.db)
 library(Rmisc)
 library(gridExtra)
+library(UpSetR)
 
 expressions <- fread("R/Lars Proteomic Data/expressions.csv", header = TRUE)
 setup <- fread("R/Lars Proteomic Data/setup.csv")

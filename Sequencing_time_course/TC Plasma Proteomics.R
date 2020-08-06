@@ -12,6 +12,7 @@ library(org.Mm.eg.db)
 library(Rmisc)
 library(gridExtra)
 library(UpSetR)
+library(pheatmap)
 ?arrange
 Plasma_proteomics_dataset <- read_excel("Sequencing_time_course/Plasma Proteomics dataset sorted.xlsx")
 Plasma_proteomics_dataset <- arrange(Plasma_proteomics_dataset, )
@@ -221,7 +222,8 @@ upset(fromList(significant_proteins_upset),
       sets = order_upset,
       order.by = "freq", 
       keep.order = T,
-      )+
+      )
+
   grid.text("Plasma Proteomics", x=0.65, y = 0.95, gp=gpar(fontsize = 30))
 
 View(significant_proteins_upset)
@@ -240,3 +242,31 @@ View(Plasma_proteomics_dataset)
 Candidate_proteins <- Plasma_proteomics_dataset %>%
   filter(Gene_names %in% Proteinlist_table)
 View(Candidate_proteins)
+
+Candidate_proteins_hm <- Candidate_proteins %>%
+  dplyr::select(-c(Gene_names, Protein_ID))
+
+row.names(Candidate_proteins_hm)<- Candidate_proteins$Gene_names
+View(Candidate_proteins_hm)
+
+
+View(Candidate_proteins)
+?select
+class(Candidate_proteins)
+
+
+#####Heatmap#####
+pheatmap(Candidate_proteins_hm,
+         treeheight_col = 0,
+         treeheight_row = 0,
+         scale = "row",
+         legend = T,
+         na_col = "white",
+         Colv = NA,
+         na.rm = T,
+         cluster_cols = F,
+         fontsize_row = 8,
+         fontsize_col = 11,
+         cellwidth = 12,
+         cellheight = 7
+)
