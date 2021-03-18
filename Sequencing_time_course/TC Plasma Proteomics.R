@@ -14,9 +14,9 @@ library(gridExtra)
 library(UpSetR)
 library(pheatmap)
 ?arrange
-Plasma_proteomics_dataset <- read_excel("Sequencing_time_course/Plasma Proteomics dataset sorted.xlsx")
+Plasma_proteomics_dataset <- openxlsx::read.xlsx("Sequencing_time_course/Plasma Proteomics dataset sorted.xlsx")
 Plasma_proteomics_dataset <- arrange(Plasma_proteomics_dataset, )
-setup_proteomics <- read_excel("Sequencing_time_course/Setup_plasma.xlsx")
+setup_proteomics <- openxlsx::read.xlsx("Sequencing_time_course/Setup_plasma.xlsx")
 setup_proteomics <- setup_proteomics %>%
   unite(group, c("Genotype", "Time"), remove = F)
 setDT(setup_proteomics)
@@ -43,9 +43,9 @@ missingSamples_proteomics <- missingSamples_proteomics %>%
 
 setup_proteomics <- setup_proteomics %>%
   group_by(group)
-?dcast
+
 cutoff <- 2
-View(tooManyMissing_proteomics)
+
 tooManyMissing_proteomics <- missingSamples_proteomics %>%
   filter(KO_12 > cutoff|
            KO_21 > cutoff | 
@@ -85,7 +85,7 @@ ggplot(mdsData_proteomics_test, aes(x = V2, y = V3, colour = group)) +
   scale_color_brewer(name = "Significant", type = "qual", palette = "Set1")
 
 design_proteomics <- model.matrix(~ 0 + group, setup_proteomics)
-View(design_proteomics)
+
 colnames(design_proteomics) <- str_remove_all(colnames(design_proteomics), "group")
 fit_proteomics <- lmFit(normalized_proteomics_res, design = design_proteomics, method = "robust")
 cont.matrix_proteomics <- makeContrasts(
@@ -122,7 +122,7 @@ View(conv_prot)
 for (i in resultTables_proteomics){
   i[, Gene:=conv_prot[Accession, Gene_names]]
 }
-write.xlsx(resultTables_proteomics, file = "limma_results_proteomics_time_course.xlsx")
+#write.xlsx(resultTables_proteomics, file = "limma_results_proteomics_time_course.xlsx")
 
 
 #GO analysis
@@ -151,6 +151,9 @@ goResults_HNKO_3d<- enrichGO(gene = HNKO_3d_enztrez$ENTREZID,
                              universe = HNKO_3d_bg$ENTREZID,
                              OrgDb = org.Mm.eg.db,
                              ont = "BP")
+HNKO_6d <- resultTables_proteomics$Genotype_6
+HNKO_6d_sig <- HNKO_6d %>%
+  filter(adj.P.Val<0.05)
 
 HNKO_6d_enztrez= bitr(HNKO_6d_sig$Gene, 
                       fromType ="SYMBOL", 
@@ -162,6 +165,9 @@ goResults_HNKO_6d<- enrichGO(gene = HNKO_6d_enztrez$ENTREZID,
                              universe = HNKO_3d_bg$ENTREZID,
                              OrgDb = org.Mm.eg.db,
                              ont = "BP")
+HNKO_12d <- resultTables_proteomics$Genotype_12
+HNKO_12d_sig <- HNKO_12d %>%
+  filter(adj.P.Val<0.05)
 
 HNKO_12d_entrez = bitr(HNKO_12d_sig$Gene, 
                        fromType ="SYMBOL", 
@@ -173,6 +179,9 @@ goResults_HNKO_12d<- enrichGO(gene = HNKO_12d_entrez$ENTREZID,
                              universe = HNKO_3d_bg$ENTREZID,
                              OrgDb = org.Mm.eg.db,
                              ont = "BP")
+HNKO_21d <- resultTables_proteomics$Genotype_21
+HNKO_21d_sig <- HNKO_21d %>%
+  filter(adj.P.Val<0.05)
 
 HNKO_21d_entrez = bitr(HNKO_21d_sig$Gene, 
                        fromType ="SYMBOL", 
@@ -193,20 +202,12 @@ View(goResults_HNKO_21d@result)
 View(goResults_HNKO_6d@result)
 
 View(goResults_HNKO_6d@result)
-goResults_western <- setReadable(goResults_western, OrgDb = org.Mm.eg.db, keyType = "ENTREZID")
-cnetplot(goResults_HNKO_3d)
 
 
-HNKO_6d_sig <- resultTables_proteomics$Genotype_6 %>%
-  filter(adj.P.Val<0.05)
-HNKO_12d_sig <- resultTables_proteomics$Genotype_12 %>%
-  filter(adj.P.Val<0.05)
 
-HNKO_21d_sig <- resultTables_proteomics$Genotype_21 %>%
-  filter(adj.P.Val<0.05)
 
-gogoResults_HNKO_6d <- setReadable(goResults_HNKO_6d, OrgDb = org.Mm.eg.db, keyType="ENTREZID")
-cnetplot(gogoResults_HNKO_6d)
+goResults_HNKO_6d <- setReadable(goResults_HNKO_6d, OrgDb = org.Mm.eg.db, keyType="ENTREZID")
+clusterProfiler::cnetplot(goResults_HNKO_6d)
 View(gogoResults_HNKO_6d@result)
 View(HNKO_6d_sig)
 #No significant GO-terms from 3d
@@ -230,14 +231,14 @@ View(significant_proteins_upset)
 library(grid)
 
 #####Extracting the Proteasome subunits #####
-gogoResults_HNKO_6d@result$geneID[1]
-Proteinlist <- gogoResults_HNKO_6d@result$gene[1]
+goResults_HNKO_6d@result$geneID[1]
+Proteinlist <- goResults_HNKO_6d@result$gene[1]
 Proteinlist_table <- data.frame(Proteinlist)
 View(Proteinlist_table)
 Proteinlist_table <- read.table(text = Proteinlist, sep = "/") 
 Proteinlist_table <- t(Proteinlist_table)
 
-View(Plasma_proteomics_dataset)
+
 
 Candidate_proteins <- Plasma_proteomics_dataset %>%
   filter(Gene_names %in% Proteinlist_table)
@@ -247,12 +248,7 @@ Candidate_proteins_hm <- Candidate_proteins %>%
   dplyr::select(-c(Gene_names, Protein_ID))
 
 row.names(Candidate_proteins_hm)<- Candidate_proteins$Gene_names
-View(Candidate_proteins_hm)
 
-
-View(Candidate_proteins)
-?select
-class(Candidate_proteins)
 
 
 #####Heatmap#####
