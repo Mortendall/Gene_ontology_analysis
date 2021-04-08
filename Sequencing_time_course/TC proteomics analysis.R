@@ -12,7 +12,7 @@ library(org.Mm.eg.db)
 library(readxl)
 #####limma analysis#####
 
-Proteomics_dataset <- read_excel("R/Re-run RNA seq set/Proteomics dataset.xlsx")
+Proteomics_dataset <- openxlsx::read.xlsx(here("Sequencing_time_course/Proteomics dataset.xlsx"))
 setup_proteomics <- read_excel("R/Re-run RNA seq set/Setup.xlsx")
 setup_proteomics <- setup_proteomics %>%
   unite(group, c("Genotype", "Time"), remove = F)
@@ -115,10 +115,65 @@ View(conv_prot)
 for (i in resultTables_proteomics){
   i[, Gene:=conv_prot[Accession, Gene_names]]
 }
-write.xlsx(resultTables_proteomics, file = "limma_results_proteomics_time_course.xlsx")
+#write.xlsx(resultTables_proteomics, file = "limma_results_proteomics_time_course_liver.xlsx")
 getwd()
 
 #####GO analysis#####
+resultTables_proteomics <- list("Genotype_3" = NA,
+                                "Genotype_6" = NA,
+                                "Genotype_12" = NA,
+                                "Genotype_21" = NA
+                                )
+for (i in 1:4){
+  resultTables_proteomics[[i]] <- openxlsx::read.xlsx(here("Sequencing_time_course/limma_results_proteomics_time_course_liver.xlsx"),i)
+}
+
+proteomics_sig <- resultTables_proteomics 
+for (i in 1:4){
+  proteomics_sig[[i]]<-proteomics_sig[[i]] %>% 
+    dplyr::filter(adj.P.Val < 0.05) 
+  proteomics_sig[[i]]<-proteomics_sig[[i]]$Gene
+} 
+
+order_upset <- c("Genotype_21", "Genotype_12", "Genotype_6","Genotype_3")
+UpSetR::upset(fromList(proteomics_sig),
+              sets = order_upset,
+              order.by = "freq", 
+              keep.order = T,
+              text.scale = 2,
+)
+grid::grid.text("Proteins with effect of genotype", x=0.65, y = 0.95, gp=grid::gpar(fontsize = 24))
+
+#GO for overlap genes
+overlap_genes <- as.data.frame(proteomics_sig[[1]]) %>%
+  dplyr::filter(proteomics_sig$Genotype_3 %in% proteomics_sig$Genotype_6 &
+                  proteomics_sig$Genotype_3 %in% proteomics_sig$Genotype_12 &
+                  proteomics_sig$Genotype_3 %in% proteomics_sig$Genotype_21
+  )
+overlap_genes <- overlap_genes %>% 
+  dplyr::filter(!is.na(overlap_genes))
+colnames(overlap_genes) <- "Symbol"
+
+overlap_entrez <- bitr(overlap_genes$Symbol, 
+                       fromType = "SYMBOL", 
+                       toType = "ENTREZID", 
+                       OrgDb = "org.Mm.eg.db",
+                       drop = T)
+
+
+overlap_bg = bitr(resultTables_proteomics[[1]]$Gene, 
+                  fromType = "SYMBOL", 
+                  toType = "ENTREZID", 
+                  OrgDb = "org.Mm.eg.db",
+                  drop = T)
+
+goResults_overlap <- enrichGO(gene = overlap_entrez$ENTREZID,
+                              universe = overlap_bg$ENTREZID,
+                              OrgDb = org.Mm.eg.db,
+                              ont = "BP")
+enrichplot::dotplot(goResults_overlap)+ggtitle("Overlap Protein GO-terms")
+
+#old GO analysis
 HNKO_3d <- resultTables_proteomics$Genotype_3
 View(HNKO_3d)
 HNKO_3d_sig <- HNKO_3d %>%
@@ -160,4 +215,87 @@ goResults_western <- setReadable(goResults_western, OrgDb = org.Mm.eg.db, keyTyp
 cnetplot(goResults_HNKO_3d)
 ?cnetplot
 View(goResults_HNKO_3d)
-OxRed = 
+
+#HNKO day 21
+day_21_proteins <- proteomics_sig$Genotype_21
+day_21_entrez <-  bitr(day_21_proteins, 
+                      fromType ="SYMBOL", 
+                      toType = "ENTREZID", 
+                      OrgDb = "org.Mm.eg.db",
+                      drop = T)
+goResults_HNKO_21d<- enrichGO(gene = day_21_entrez$ENTREZID,
+                             universe = overlap_bg$ENTREZID,
+                             OrgDb = org.Mm.eg.db,
+                             ont = "BP")
+enrichplot::dotplot(goResults_HNKO_21d)
+#HNKO day 3
+day_3_proteins <- proteomics_sig$Genotype_3
+day_3_entrez <-  bitr(day_3_proteins, 
+                       fromType ="SYMBOL", 
+                       toType = "ENTREZID", 
+                       OrgDb = "org.Mm.eg.db",
+                       drop = T)
+goResults_HNKO_3d<- enrichGO(gene = day_3_entrez$ENTREZID,
+                              universe = overlap_bg$ENTREZID,
+                              OrgDb = org.Mm.eg.db,
+                              ont = "BP")
+enrichplot::dotplot(goResults_HNKO_3d)
+#HNKO unique day 3
+unique_3_genes <- as.data.frame(proteomics_sig[[1]]) %>%
+  dplyr::filter(!proteomics_sig$Genotype_3 %in% proteomics_sig$Genotype_6 &
+                  !proteomics_sig$Genotype_3 %in% proteomics_sig$Genotype_12 &
+                  !proteomics_sig$Genotype_3 %in% proteomics_sig$Genotype_21
+  )
+unique_3_genes <- unique_3_genes %>% 
+  dplyr::filter(!is.na(unique_3_genes))
+colnames(unique_3_genes) <- "Symbol"
+
+unique_3_entrez <- bitr(unique_3_genes$Symbol, 
+                       fromType = "SYMBOL", 
+                       toType = "ENTREZID", 
+                       OrgDb = "org.Mm.eg.db",
+                       drop = T)
+goResults_HNKO_3d_unique<- enrichGO(gene = unique_3_entrez$ENTREZID,
+                             universe = overlap_bg$ENTREZID,
+                             OrgDb = org.Mm.eg.db,
+                             ont = "BP")
+enrichplot::dotplot(goResults_HNKO_3d_unique)
+
+#unique day 21
+unique_21_genes <- as.data.frame(proteomics_sig[[4]]) %>%
+  dplyr::filter(!proteomics_sig$Genotype_21 %in% proteomics_sig$Genotype_3 &
+                  !proteomics_sig$Genotype_21 %in% proteomics_sig$Genotype_6 &
+                  !proteomics_sig$Genotype_21 %in% proteomics_sig$Genotype_12
+  )
+unique_21_genes <- unique_21_genes %>% 
+  dplyr::filter(!is.na(unique_21_genes))
+colnames(unique_21_genes) <- "Symbol"
+
+unique_21_entrez <- bitr(unique_21_genes$Symbol, 
+                        fromType = "SYMBOL", 
+                        toType = "ENTREZID", 
+                        OrgDb = "org.Mm.eg.db",
+                        drop = T)
+goResults_HNKO_21d_unique<- enrichGO(gene = unique_21_entrez$ENTREZID,
+                                    universe = overlap_bg$ENTREZID,
+                                    OrgDb = org.Mm.eg.db,
+                                    ont = "BP")
+enrichplot::dotplot(goResults_HNKO_21d_unique)
+
+
+#Analysis from Lili
+ANOVA_results <- openxlsx::read.xlsx(here("Sequencing_time_course/Two-way_ANOVA_liver_fdr0.05.xlsx"))
+bg_proteins <- ANOVA_results$Gene.name
+sig_proteins <- ANOVA_results %>% 
+  dplyr::filter(qvalue < 0.05) %>% 
+  dplyr::select(Gene.name)
+main_proteins<- bitr(sig_proteins$Gene.name, 
+                         fromType = "SYMBOL", 
+                         toType = "ENTREZID", 
+                         OrgDb = "org.Mm.eg.db",
+                         drop = T)
+goResults_main_proteins<- enrichGO(gene = main_proteins$ENTREZID,
+                                     universe = overlap_bg$ENTREZID,
+                                     OrgDb = org.Mm.eg.db,
+                                     ont = "BP")
+enrichplot::dotplot(goResults_main_proteins)+ggtitle("Proteins with main effect of genotype")
