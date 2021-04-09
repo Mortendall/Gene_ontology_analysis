@@ -159,9 +159,9 @@ cpm_key <-   clusterProfiler::bitr(
 )
 
 
-expressions <- fread(here::here("HNKO_NR_proteomics/expressions.csv"), header = TRUE)
-setup <- fread(here::here("HNKO_NR_proteomics/setup.csv"))
-setnames(setup, c("sample", "Genotype", "Treatment"))
+expressions <- data.table::fread(here::here("HNKO_NR_proteomics/expressions.csv"), header = TRUE)
+setup <- data.table::fread(here::here("HNKO_NR_proteomics/setup.csv"))
+data.table::setnames(setup, c("sample", "Genotype", "Treatment"))
 setup[, group:=paste(Genotype, Treatment, sep = "_")]
 View(setup)
 setup <- setup[sample != "330"]
@@ -169,10 +169,31 @@ setup <- setup[sample != "330"]
 expressions <- expressions %>%
   dplyr::select(!"330")
 
-res <- normalizeBetweenArrays(log(as.matrix(expressions[,-c(1:2)])), method = "quantile")
+res <- limma::normalizeBetweenArrays(log(as.matrix(expressions[,-c(1:2)])), method = "quantile")
 res <- as.data.frame(res)
 res <- res %>% 
   dplyr::mutate(Gene = expressions$Gene)
+
+go_results <- list("Treatment in WT" = NA,
+                   "Treatment in KO" = NA, 
+                   "Genotype in control" = NA, 
+                   "Genotype in NR" = NA)
+for (i in 1:4){
+  go_results[[i]]<- openxlsx::read.xlsx(here::here("HNKO_NR_proteomics/goData_NR_prot.xlsx"),i)
+}
+                   
+  
+
+oxphos_proteins <- go_results[[2]]$geneID[1]
+oxphos_proteins <- unlist(str_split(oxphos_proteins, "/"))
+
+cpm_key <-   clusterProfiler::bitr(
+  oxphos_proteins,
+  fromType = "ENTREZID",
+  toType = "SYMBOL",
+  OrgDb = "org.Mm.eg.db"
+)
+
 res_ox <- res %>% 
   dplyr::filter(Gene %in% cpm_key$SYMBOL) %>% 
   dplyr::distinct(Gene, .keep_all = T)
@@ -183,33 +204,23 @@ res_ox <- res_ox %>%
 setup_ordered <- setup
 order <- c("WT_Control", "KO_Control", "WT_NR", "KO_NR")
 
+setup_ordered <- setup_ordered %>% 
+  dplyr::arrange(Treatment,desc(Genotype))
 
-cpm_annotated <- as.data.frame(cpm_matrix)
-cpm_annotated <- cpm_annotated %>%
-  dplyr::filter(rownames(cpm_matrix) %in% cpm_key$ENSEMBL)
+class(colnames(res_ox))
+setup_ordered$sample <- as.character(setup_ordered$sample)
+res_ox <- res_ox %>% 
+  dplyr::select(setup_ordered$sample)
 
-columns <- colnames(cpm_annotated)
-column_order <- c("544L", "548L", "554L", "556L", "564L", "540L", "542L", "546L", "552L", "562L", "566L", "544CS", "548CS", "554CS", "556CS", "558CS", "564CS", "540CS", "542CS", "546CS", "552CS", "562CS", "566CS", "544PH", "548PH", "554PH", "556PH", "558PH", "564PH", "540PH", "542PH", "546PH", "552PH", "562PH",  "566PH")
+key <- as.data.frame(setup_ordered)
 
-cpm_test <- cpm_annotated %>%
-  dplyr::select(column_order)
-
-conv <- clusterProfiler::bitr(rownames(cpm_test),
-                              fromType = "ENSEMBL",
-                              toType = "SYMBOL",
-                              OrgDb = "org.Mm.eg.db")
-rownames(cpm_test) <- conv$SYMBOL
-#generate and organize metadata for heatmap
-meta_heat_map <- metadata %>%
-  dplyr::arrange(match(Sample, column_order)) %>%
-  dplyr::filter(!Sample == "558L") %>%
-  dplyr::select(Sample, Group)
-rownames(meta_heat_map)<-meta_heat_map$Sample
-meta_heat_map <- meta_heat_map %>%
-  dplyr::select(-Sample)
+key <- key %>% 
+  dplyr::select(group)
+rownames(key) <- setup_ordered$sample
 
 
-pheatmap(cpm_test,
+
+pheatmap::pheatmap(res_ox,
          treeheight_col = 0,
          treeheight_row = 0,
          scale = "row",
@@ -218,11 +229,14 @@ pheatmap(cpm_test,
          Colv = NA,
          na.rm = T,
          cluster_cols = F,
-         fontsize_row = 8,
-         fontsize_col = 11,
-         cellwidth = 12,
-         cellheight = 7,
-         annotation_col = meta_heat_map
+         fontsize_row = 5,
+         fontsize_col = 8,
+         cellwidth = 3,
+         cellheight = 2,
+         annotation_col = key,
+         show_colnames = F,
+         show_rownames = F,
+         main = "Oxidation-reduction process"
 )
 
 #try to run the GO-analysis function from prim hep
