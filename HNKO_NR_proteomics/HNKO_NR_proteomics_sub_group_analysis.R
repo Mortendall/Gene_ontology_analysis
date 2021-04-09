@@ -49,7 +49,7 @@ go_Results_overlap <- enrichGO(gene = overlap_entrez$ENTREZID,
                              OrgDb = org.Mm.eg.db,
                              ont = "BP")
 clusterProfiler::dotplot(go_Results_overlap, showCategory = 10, title = "Overlap between NR treatment and HNKO control")
-?dotplot
+
 goResults_interaction <- enrichGO(gene = Interaction_enztrez$ENTREZID,
                                   universe = Interaction_enztrez_bg$ENTREZID,
                                   OrgDb = org.Mm.eg.db,
@@ -89,3 +89,138 @@ go_Results_HNKO_unique <- enrichGO(gene = Unique_HNKO_entrez$ENTREZID,
                                  ont = "BP")
 
 clusterProfiler::dotplot(go_Results_HNKO_unique,  title = "Unique Terms in HNKO in control")
+
+#analyse effect of NR in HNKO
+HNKO_entrez <- bitr(HNKO_effect_sig$Gene,
+                                             fromType = "SYMBOL",
+                                             toType = "ENTREZID",
+                                             OrgDb = "org.Mm.eg.db",
+                                             drop = T)
+go_Results_HNKO <- enrichGO(gene = HNKO_entrez$ENTREZID,
+                                   universe = Background$ENTREZID,
+                                   OrgDb = org.Mm.eg.db,
+                                   ont = "BP")
+NR_entrez <- bitr(NR_effect_sig$Gene,
+                    fromType = "SYMBOL",
+                    toType = "ENTREZID",
+                    OrgDb = "org.Mm.eg.db",
+                    drop = T)
+NR_entrez_bg <- bitr(NR_effect$Gene,
+                  fromType = "SYMBOL",
+                  toType = "ENTREZID",
+                  OrgDb = "org.Mm.eg.db",
+                  drop = T)
+
+go_Results_NR <- enrichGO(gene = NR_entrez$ENTREZID,
+                            universe = NR_entrez_bg$ENTREZID,
+                            OrgDb = org.Mm.eg.db,
+                            ont = "BP")
+enrichplot::dotplot(go_Results_NR)+ggtitle("HNKO Con vs NR" )
+
+con_entrez <- bitr(HNKO_effect_sig$Gene,
+                  fromType = "SYMBOL",
+                  toType = "ENTREZID",
+                  OrgDb = "org.Mm.eg.db",
+                  drop = T)
+
+
+go_Results_con <- enrichGO(gene = con_entrez$ENTREZID,
+                          universe = NR_entrez_bg$ENTREZID,
+                          OrgDb = org.Mm.eg.db,
+                          ont = "BP")
+enrichplot::dotplot(go_Results_con)+ggtitle("Control WT vs HNKO" )
+
+#####Upsetplot#####
+limma_results_sig <- limma_results
+  for (i in 1:4){
+    limma_results_sig[[i]]<-limma_results_sig[[i]] %>% 
+      dplyr::filter(adj.P.Val < 0.05) 
+    limma_results_sig[[i]]<-limma_results_sig[[i]]$Gene
+  } 
+
+order_upset <- c("Genotype in NR", "Genotype in control", "Treatment in KO","Treatment in WT")
+UpSetR::upset(fromList(limma_results_sig),
+              sets = order_upset,
+              order.by = "freq", 
+              keep.order = T,
+              text.scale = 2,
+)
+grid::grid.text("Significantly altered proteins", x=0.65, y = 0.95, gp=grid::gpar(fontsize = 20))
+
+#####heatmap of ox-red prod####
+oxphos_proteins <- go_Results_NR@result$geneID[[1]]
+oxphos_proteins <- unlist(str_split(oxphos_proteins, "/"))
+
+cpm_key <-   clusterProfiler::bitr(
+  oxphos_proteins,
+  fromType = "ENTREZID",
+  toType = "SYMBOL",
+  OrgDb = "org.Mm.eg.db"
+)
+
+
+expressions <- fread(here::here("HNKO_NR_proteomics/expressions.csv"), header = TRUE)
+setup <- fread(here::here("HNKO_NR_proteomics/setup.csv"))
+setnames(setup, c("sample", "Genotype", "Treatment"))
+setup[, group:=paste(Genotype, Treatment, sep = "_")]
+View(setup)
+setup <- setup[sample != "330"]
+#330 is the steatotic mouse
+expressions <- expressions %>%
+  dplyr::select(!"330")
+
+res <- normalizeBetweenArrays(log(as.matrix(expressions[,-c(1:2)])), method = "quantile")
+res <- as.data.frame(res)
+res <- res %>% 
+  dplyr::mutate(Gene = expressions$Gene)
+res_ox <- res %>% 
+  dplyr::filter(Gene %in% cpm_key$SYMBOL) %>% 
+  dplyr::distinct(Gene, .keep_all = T)
+rownames(res_ox) <- res_ox$Gene 
+res_ox <- res_ox %>%
+  dplyr::select(-Gene)
+
+setup_ordered <- setup
+order <- c("WT_Control", "KO_Control", "WT_NR", "KO_NR")
+
+
+cpm_annotated <- as.data.frame(cpm_matrix)
+cpm_annotated <- cpm_annotated %>%
+  dplyr::filter(rownames(cpm_matrix) %in% cpm_key$ENSEMBL)
+
+columns <- colnames(cpm_annotated)
+column_order <- c("544L", "548L", "554L", "556L", "564L", "540L", "542L", "546L", "552L", "562L", "566L", "544CS", "548CS", "554CS", "556CS", "558CS", "564CS", "540CS", "542CS", "546CS", "552CS", "562CS", "566CS", "544PH", "548PH", "554PH", "556PH", "558PH", "564PH", "540PH", "542PH", "546PH", "552PH", "562PH",  "566PH")
+
+cpm_test <- cpm_annotated %>%
+  dplyr::select(column_order)
+
+conv <- clusterProfiler::bitr(rownames(cpm_test),
+                              fromType = "ENSEMBL",
+                              toType = "SYMBOL",
+                              OrgDb = "org.Mm.eg.db")
+rownames(cpm_test) <- conv$SYMBOL
+#generate and organize metadata for heatmap
+meta_heat_map <- metadata %>%
+  dplyr::arrange(match(Sample, column_order)) %>%
+  dplyr::filter(!Sample == "558L") %>%
+  dplyr::select(Sample, Group)
+rownames(meta_heat_map)<-meta_heat_map$Sample
+meta_heat_map <- meta_heat_map %>%
+  dplyr::select(-Sample)
+
+
+pheatmap(cpm_test,
+         treeheight_col = 0,
+         treeheight_row = 0,
+         scale = "row",
+         legend = T,
+         na_col = "white",
+         Colv = NA,
+         na.rm = T,
+         cluster_cols = F,
+         fontsize_row = 8,
+         fontsize_col = 11,
+         cellwidth = 12,
+         cellheight = 7,
+         annotation_col = meta_heat_map
+)

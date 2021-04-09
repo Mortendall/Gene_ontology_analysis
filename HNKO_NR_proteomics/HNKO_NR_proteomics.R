@@ -25,7 +25,7 @@ expressions <- expressions %>%
 
 res <- normalizeBetweenArrays(log(as.matrix(expressions[,-c(1:2)])), method = "quantile")
 rownames(res) <- expressions$Accession
-?normalizeBetweenArrays
+
 View(res)
 View(expressions)
 # Sometimes all samples in a group is missing
@@ -110,7 +110,7 @@ setkey(conv, Accession)
 for (i in resultTables){
   i[, Gene:=conv[Accession, Gene]]
 }
-write.xlsx(resultTables, file = "limma_results.xlsx")
+#write.xlsx(resultTables, file = "limma_results.xlsx")
 getwd()
 
 pD <- data.table(selectedData, keep.rownames = TRUE) %>% 
@@ -162,10 +162,23 @@ ggplot(tmp, aes(x = group, y = val)) + geom_point(position = position_jitter(wid
 plot(match(resultTables$Interaction$Accession, rownames(selectedData)[indBad]))
 
 #my code for GO
+limma_results <- vector(mode = "list", length = 4)
+temporary_result <- data.frame(NA, NA, NA, NA)
+
+for (i in 1:4){
+  temporary_result <- read.xlsx("C:/Users/tvb217/Documents/R/Lars Proteomic Data/limma_results.xlsx", i)
+  limma_results[[i]]<- temporary_result
+}
+
+names(limma_results)[[1]]<- "Treatment_in_WT"
+names(limma_results)[[2]]<- "Treatment_in_KO"
+names(limma_results)[[3]]<- "KO_in_Control"
+names(limma_results)[[4]]<- "KO_in_NR"
+resultTables <- limma_results
 
 KO_control_list <- resultTables$KO_in_Control
 KO_control_list_significant <- KO_control_list %>%
-  filter(adj.P.Val<0.05) 
+  dplyr::filter(adj.P.Val<0.05) 
 
 KO_list <- KO_control_list_significant[,c(8,2)]
 View(KO_control_list)
@@ -187,14 +200,14 @@ goResults <- enrichGO(gene = eg$ENTREZID,
                       universe = bg$ENTREZID,
                       OrgDb = org.Mm.eg.db,
                       ont = "BP")
-dotplot(goResults)
+enrichplot::dotplot(goResults)
 goResults <- setReadable(goResults, OrgDb = org.Mm.eg.db, keyType="ENTREZID")
 cnetplot(goResults)
 
 #effect of NR
-NR_control_list <- resultTables$Treatment_in_WT
-NR_control_list_significant <- NR_control_list %>%
-  filter(adj.P.Val<0.05) 
+  NR_control_list <- resultTables$Treatment_in_WT
+  NR_control_list_significant <- NR_control_list %>%
+    filter(adj.P.Val<0.05) 
 
 NR_WT_enztrez= bitr(NR_control_list_significant$Gene, 
                     fromType = "SYMBOL", 
@@ -233,7 +246,7 @@ goResults_NR_KO <- enrichGO(gene = NR_KO_enztrez$ENTREZID,
                             universe = NR_KO_enztrez_bg$ENTREZID,
                             OrgDb = org.Mm.eg.db,
                             ont = "BP")
-dotplot(goResults_NR_KO)
+enrichplot::dotplot(goResults_NR_KO)
 
 HNKO_NR_list <- resultTables$KO_in_NR
 HNKO_NR_list_significant <- HNKO_NR_list %>%
