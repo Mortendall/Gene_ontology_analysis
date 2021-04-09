@@ -224,3 +224,47 @@ pheatmap(cpm_test,
          cellheight = 7,
          annotation_col = meta_heat_map
 )
+
+#try to run the GO-analysis function from prim hep
+#' Gene ontology enrichment analysis of genes generated from a results file
+#'
+#' @param result_list list of data.tables generated from edgeR. Must be data.table and contain a SYMBOL annotation column
+#'
+#' @return a list containing enrichresults for each element in the results file list
+
+goAnalysis <- function(result_list){
+  bg <- result_list[[1]]
+  bg_list <- clusterProfiler::bitr(
+    bg$Gene,
+    fromType = "SYMBOL",
+    toType = "ENTREZID",
+    OrgDb = "org.Mm.eg.db",
+    drop = T
+  )
+  
+  goResult_list <- vector(mode = "list", length = length(result_list))
+  for(i in 1:length(result_list)){
+    sig_list<- result_list[[i]] %>%
+      dplyr::filter(adj.P.Val<0.05)
+    
+    eg <- clusterProfiler::bitr(
+      sig_list$Gene,
+      fromType = "SYMBOL",
+      toType = "ENTREZID",
+      OrgDb = "org.Mm.eg.db",
+      drop = T
+    )
+    goResults <- clusterProfiler::enrichGO(gene = eg$ENTREZID,
+                                           universe = bg_list$ENTREZID,
+                                           OrgDb = org.Mm.eg.db,
+                                           ont = "BP")
+    goResult_list[[i]]<- goResults
+  }
+  for (i in 1:length(goResult_list)){
+    names(goResult_list)[i]<-names(result_list)[i]
+  }
+  return(goResult_list)
+  
+}
+goTest_MF <- goAnalysis(limma_results)
+write.xlsx(goTest, here::here("HNKO_NR_proteomics/goData_NR_prot.xlsx"))
