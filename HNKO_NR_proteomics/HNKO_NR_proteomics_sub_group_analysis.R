@@ -281,4 +281,100 @@ goAnalysis <- function(result_list){
   
 }
 goTest_MF <- goAnalysis(limma_results)
-write.xlsx(goTest, here::here("HNKO_NR_proteomics/goData_NR_prot.xlsx"))
+#write.xlsx(goTest, here::here("HNKO_NR_proteomics/goData_NR_prot.xlsx"))
+
+#Extract NAD candidate genes
+NAD_genes <- c("Nampt", "Nmnat1", "Nmnat2", "Nmnat3", "Nadsyn1", "Nnt", "Nnmt", "Tdo2", "Afmid", "Kmo", "Qprt", "Kynu", "Ido2", "Adk", "Cd73", "Naprt", "Nrk1", "Nrk2", "Slc25a1", "Ent1", "Ent2", "Ent4", "Slc12a8")
+NAD_genes <- sort(NAD_genes)
+
+res_NAD <- res %>% 
+  dplyr::filter(Gene %in% NAD_genes) %>% 
+  dplyr::distinct(Gene, .keep_all = T)
+
+rownames(res_NAD) <- res_NAD$Gene 
+res_NAD <- res_NAD %>%
+  dplyr::arrange(Gene) %>% 
+  dplyr::select(-Gene)
+
+setup_ordered <- setup
+order <- c("WT_Control", "KO_Control", "WT_NR", "KO_NR")
+
+setup_ordered <- setup_ordered %>% 
+  dplyr::arrange(Treatment,desc(Genotype))
+
+
+setup_ordered$sample <- as.character(setup_ordered$sample)
+res_NAD <- res_NAD %>% 
+  dplyr::select(setup_ordered$sample) 
+
+key <- as.data.frame(setup_ordered)
+
+key <- key %>% 
+  dplyr::select(group)
+rownames(key) <- setup_ordered$sample
+
+key$group <- factor(key$group, levels = c("WT_Control","KO_Control", "WT_NR", "KO_NR"))
+
+pheatmap::pheatmap(res_NAD,
+                   treeheight_col = 0,
+                   treeheight_row = 0,
+                   scale = "row",
+                   legend = T,
+                   na_col = "white",
+                   Colv = NA,
+                   na.rm = T,
+                   cluster_cols = F,
+                   fontsize_row = 9,
+                   fontsize_col = 8,
+                   cellwidth = 8,
+                   cellheight = 10,
+                   annotation_col = key,
+                   show_colnames = F,
+                   show_rownames = T,
+                   main = "NAD-synthesis",
+                   cluster_rows = F
+)
+
+#Do the same for NAD consumers
+NAD_consumers <- c("Sirt1", "Sirt2", "Sirt3", "Sirt4", "Sirt5", "Sirt6", "Sirt7", "Parp1", "Parp4", "Parp14", "Parp3", "Parp12", "Parp12", "Parp9", "Parp10", "Cd38", "Nadk", "Sarm1")
+NAD_consumers <- sort(NAD_consumers)
+res_con <- res %>% 
+  dplyr::filter(Gene %in% NAD_consumers) %>% 
+  dplyr::distinct(Gene, .keep_all = T)
+
+rownames(res_con) <- res_con$Gene 
+res_con <- res_con %>%
+  dplyr::arrange(Gene) %>% 
+  dplyr::select(-Gene)
+
+
+res_con <- res_con %>% 
+  dplyr::select(setup_ordered$sample) 
+
+
+pheatmap::pheatmap(res_con,
+                   treeheight_col = 0,
+                   treeheight_row = 0,
+                   scale = "row",
+                   legend = T,
+                   na_col = "white",
+                   Colv = NA,
+                   na.rm = T,
+                   cluster_cols = F,
+                   fontsize_row = 9,
+                   fontsize_col = 8,
+                   cellwidth = 8,
+                   cellheight = 10,
+                   annotation_col = key,
+                   show_colnames = F,
+                   show_rownames = T,
+                   main = "NAD-consumers",
+                   cluster_rows = F
+)
+
+#how many of these are significant?
+
+HNKO_effect_sig %>% dplyr::filter(Gene %in% NAD_consumers)
+HNKO_effect_sig %>% dplyr::filter(Gene %in% NAD_genes)
+NR_effect_sig %>% dplyr::filter(Gene %in% NAD_consumers)
+NR_effect_sig %>% dplyr::filter(Gene %in% NAD_genes)
