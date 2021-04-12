@@ -133,7 +133,7 @@ resultsTables_proteomics <- list(
   "Genotype_21" = NA
 )
 for (i in 1:4){
-resultsTables_proteomics[[i]] <- openxlsx::read.xlsx(here("limma_results_proteomics_time_course.xlsx"), i)
+resultsTables_proteomics[[i]] <- openxlsx::read.xlsx(here::here("limma_results_proteomics_time_course.xlsx"), i)
 }
 #GO analysis
 HNKO_3d <- resultTables_proteomics$Genotype_3
@@ -317,8 +317,9 @@ heatmap_key <- setup_heatmap %>%
 rownames(heatmap_key) <- heatmap_key$ID
 heatmap_key <- heatmap_key %>% 
   dplyr::select(-ID)
+heatmap_key$group <- factor(heatmap_key$group, levels = c("WT_3", "KO_3", "WT_6", "KO_6", "WT_12", "KO_12", "WT_21", "KO_21"))
 
-pheatmap(Plasma_proteomics_overlap,
+pheatmap::pheatmap(Plasma_proteomics_overlap,
          treeheight_col = 0,
          treeheight_row = 0,
          scale = "row",
