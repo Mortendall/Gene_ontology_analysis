@@ -91,6 +91,7 @@ UpSetR::upset(fromList(edgeR_sig),
               keep.order = T,
               text.scale = 2
 )
+grid::grid.text("Genes with effect of genotype", x=0.65, y = 0.95, gp=grid::gpar(fontsize = 24))
 
 #extract significant overlap genes
 

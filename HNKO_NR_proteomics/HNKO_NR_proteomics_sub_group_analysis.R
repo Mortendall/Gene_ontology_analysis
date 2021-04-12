@@ -284,7 +284,7 @@ goTest_MF <- goAnalysis(limma_results)
 #write.xlsx(goTest, here::here("HNKO_NR_proteomics/goData_NR_prot.xlsx"))
 
 #Extract NAD candidate genes
-NAD_genes <- c("Nampt", "Nmnat1", "Nmnat2", "Nmnat3", "Nadsyn1", "Nnt", "Nnmt", "Tdo2", "Afmid", "Kmo", "Qprt", "Kynu", "Ido2", "Adk", "Cd73", "Naprt", "Nrk1", "Nrk2", "Slc25a1", "Ent1", "Ent2", "Ent4", "Slc12a8")
+NAD_genes <- c("Nampt", "Nmnat1", "Nmnat2", "Nmnat3", "Nadsyn1", "Nnt", "Nnmt", "Tdo2", "Afmid", "Kmo", "Qprt", "Kynu", "Ido2", "Adk", "Cd73", "Naprt", "Nmrk1", "Nmrk2", "Slc25a1", "Ent1", "Ent2", "Ent4", "Slc12a8", "Haao", "Aspdh")
 NAD_genes <- sort(NAD_genes)
 
 res_NAD <- res %>% 

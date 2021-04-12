@@ -125,7 +125,7 @@ resultTables_proteomics <- list("Genotype_3" = NA,
                                 "Genotype_21" = NA
                                 )
 for (i in 1:4){
-  resultTables_proteomics[[i]] <- openxlsx::read.xlsx(here("Sequencing_time_course/limma_results_proteomics_time_course_liver.xlsx"),i)
+  resultTables_proteomics[[i]] <- openxlsx::read.xlsx(here::here("Sequencing_time_course/limma_results_proteomics_time_course_liver.xlsx"),i)
 }
 
 proteomics_sig <- resultTables_proteomics 
@@ -284,16 +284,23 @@ enrichplot::dotplot(goResults_HNKO_21d_unique)
 
 
 #Analysis from Lili
-ANOVA_results <- openxlsx::read.xlsx(here("Sequencing_time_course/Two-way_ANOVA_liver_fdr0.05.xlsx"))
+ANOVA_results <- openxlsx::read.xlsx(here::here("Sequencing_time_course/Two-way_ANOVA_liver_fdr0.05.xlsx"))
 bg_proteins <- ANOVA_results$Gene.name
 sig_proteins <- ANOVA_results %>% 
-  dplyr::filter(qvalue < 0.05) %>% 
+  dplyr::filter(qvalue < 0.05 & Source == "condition") %>% 
   dplyr::select(Gene.name)
 main_proteins<- bitr(sig_proteins$Gene.name, 
                          fromType = "SYMBOL", 
                          toType = "ENTREZID", 
                          OrgDb = "org.Mm.eg.db",
                          drop = T)
+
+overlap_bg = bitr(resultTables_proteomics[[1]]$Gene, 
+                  fromType = "SYMBOL", 
+                  toType = "ENTREZID", 
+                  OrgDb = "org.Mm.eg.db",
+                  drop = T)
+
 goResults_main_proteins<- enrichGO(gene = main_proteins$ENTREZID,
                                      universe = overlap_bg$ENTREZID,
                                      OrgDb = org.Mm.eg.db,
