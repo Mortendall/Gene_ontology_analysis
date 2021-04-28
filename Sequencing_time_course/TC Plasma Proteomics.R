@@ -224,17 +224,17 @@ View(HNKO_6d_sig)
 
 ######Upsetplot#####
 
-significant_proteins_upset <- list(HNKO_3d = resultsTables_proteomics[[1]],
-                                   HNKO_6d = resultsTables_proteomics[[2]],
-                                   HNKO_12d = resultsTables_proteomics[[3]],
-                                   HNKO_21d = resultsTables_proteomics[[4]])
+significant_proteins_upset <- list("HNKO 3d" = resultsTables_proteomics[[1]],
+                                   "HNKO 6d" = resultsTables_proteomics[[2]],
+                                   "HNKO 12d" = resultsTables_proteomics[[3]],
+                                   "HNKO 21d" = resultsTables_proteomics[[4]])
 for (i in 1:4){
   significant_proteins_upset [[i]]  <- significant_proteins_upset [[i]] %>% 
     dplyr::filter(adj.P.Val < 0.05) 
   significant_proteins_upset [[i]]  <- significant_proteins_upset [[i]]$Gene
 }
 
-order_upset <- c("HNKO_21d", "HNKO_12d", "HNKO_6d","HNKO_3d")
+order_upset <- c("HNKO 21d", "HNKO 12d", "HNKO 6d","HNKO 3d")
 View(significant_proteins_upset)
 UpSetR::upset(UpSetR::fromList(significant_proteins_upset),
       sets = order_upset,
@@ -243,7 +243,7 @@ UpSetR::upset(UpSetR::fromList(significant_proteins_upset),
       text.scale = 2
       )
 
-  grid.text("Plasma Proteomics", x=0.65, y = 0.95, gp=gpar(fontsize = 30))
+  grid::grid.text("Plasma Proteomics", x=0.65, y = 0.95, gp=grid::gpar(fontsize = 30))
 
 View(significant_proteins_upset)
 library(grid)
@@ -312,12 +312,24 @@ setup_heatmap$ID <- as.character(setup_heatmap$ID)
 Plasma_proteomics_overlap <- Plasma_proteomics_overlap %>% 
   dplyr::select(setup_heatmap$ID)
 
+setup_heatmap <- setup_heatmap %>% 
+  dplyr::mutate(group = case_when(
+    group == "WT_3"~"WT 3",
+    group == "KO_3"~"HNKO 3",
+    group == "WT_6"~"WT 6",
+    group == "KO_6"~ "HNKO 6",
+    group == "WT_12"~"WT 12",
+    group == "KO_12"~"HNKO 12",
+    group == "WT_21"~"WT 21",
+    group == "KO_21"~ "HNKO 21"
+  ))
+
 heatmap_key <- setup_heatmap %>% 
   dplyr::select(ID, group)
 rownames(heatmap_key) <- heatmap_key$ID
 heatmap_key <- heatmap_key %>% 
   dplyr::select(-ID)
-heatmap_key$group <- factor(heatmap_key$group, levels = c("WT_3", "KO_3", "WT_6", "KO_6", "WT_12", "KO_12", "WT_21", "KO_21"))
+heatmap_key$group <- factor(heatmap_key$group, levels = c("WT 3", "HNKO 3", "WT 6", "HNKO 6", "WT 12", "HNKO 12", "WT 21", "HNKO 21"))
 
 pheatmap::pheatmap(Plasma_proteomics_overlap,
          treeheight_col = 0,

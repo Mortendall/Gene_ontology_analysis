@@ -202,7 +202,16 @@ res_ox <- res_ox %>%
   dplyr::select(-Gene)
 
 setup_ordered <- setup
-order <- c("WT_Control", "KO_Control", "WT_NR", "KO_NR")
+setup_ordered <- setup_ordered %>%
+  dplyr::mutate(
+    group = dplyr::case_when(
+      group == "WT_Control" ~ "WT Control",
+      group == "KO_Control" ~ "HNKO Control",
+      group == "WT_NR" ~ "WT NR",
+      group == "KO_NR" ~ "HNKO NR"
+    )
+  )
+order <- c("WT Control", "HNKO Control", "WT NR", "HNKO NR")
 
 setup_ordered <- setup_ordered %>% 
   dplyr::arrange(Treatment,desc(Genotype))
@@ -217,6 +226,7 @@ key <- as.data.frame(setup_ordered)
 key <- key %>% 
   dplyr::select(group)
 rownames(key) <- setup_ordered$sample
+key$group <- factor(key$group, c("WT Control", "HNKO Control", "WT NR", "HNKO NR"))
 
 
 
@@ -297,7 +307,7 @@ res_NAD <- res_NAD %>%
   dplyr::select(-Gene)
 
 setup_ordered <- setup
-order <- c("WT_Control", "KO_Control", "WT_NR", "KO_NR")
+order <- c("WT Control", "HNKO Control", "WT NR", "HNKO NR")
 
 setup_ordered <- setup_ordered %>% 
   dplyr::arrange(Treatment,desc(Genotype))
@@ -378,3 +388,41 @@ HNKO_effect_sig %>% dplyr::filter(Gene %in% NAD_consumers)
 HNKO_effect_sig %>% dplyr::filter(Gene %in% NAD_genes)
 NR_effect_sig %>% dplyr::filter(Gene %in% NAD_consumers)
 NR_effect_sig %>% dplyr::filter(Gene %in% NAD_genes)
+
+#####check top20 genes form single cell set#####
+top_20_genes <- readRDS("~/R/tmp/SCS/pilot_data/top_20_genes.rds")
+
+
+res_20 <- res %>% 
+  dplyr::filter(Gene %in% top_20_genes) %>% 
+  dplyr::distinct(Gene, .keep_all = T)
+
+rownames(res_20) <- res_20$Gene 
+res_20 <- res_20 %>%
+  dplyr::arrange(Gene) %>% 
+  dplyr::select(-Gene)
+
+
+res_20 <- res_20 %>% 
+  dplyr::select(setup_ordered$sample) 
+
+
+pheatmap::pheatmap(res_20,
+                   treeheight_col = 0,
+                   treeheight_row = 0,
+                   scale = "row",
+                   legend = T,
+                   na_col = "white",
+                   Colv = NA,
+                   na.rm = T,
+                   cluster_cols = F,
+                   fontsize_row = 9,
+                   fontsize_col = 8,
+                   cellwidth = 8,
+                   cellheight = 10,
+                   annotation_col = key,
+                   show_colnames = F,
+                   show_rownames = T,
+                   main = "NAD-consumers",
+                   cluster_rows = F
+)

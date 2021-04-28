@@ -68,13 +68,13 @@ cnetplot(goResults_3d)
 #####Upset plot of edgeR data#####
 #import edgeR data from Lars
 
-edgeR_data <- list(KO_at_3d = NA,
-                   KO_at_6d = NA,
-                   KO_at_12d = NA,
-                   KO_at_21d = NA)
+edgeR_data <- list("HNKO 3d" = NA,
+                   "HNKO 6d" = NA,
+                   "HNKO 12d" = NA,
+                   "HNKO 21d" = NA)
 
 for (i in 1:4){
-  edgeR_data[[i]]<- openxlsx::read.xlsx(here("Sequencing_time_course/022_JonasTreebak_Anna_edgeR_results.xlsx"),i)
+  edgeR_data[[i]]<- openxlsx::read.xlsx(here::here("Sequencing_time_course/022_JonasTreebak_Anna_edgeR_results.xlsx"),i)
 }
 
 edgeR_sig <- edgeR_data  
@@ -84,14 +84,14 @@ for (i in 1:4){
     edgeR_sig[[i]]<-edgeR_sig[[i]]$SYMBOL
 } 
 
-order_upset <- c("KO_at_21d", "KO_at_12d", "KO_at_6d","KO_at_3d")
+order_upset <- c("HNKO 21d", "HNKO 12d", "HNKO 6d","HNKO 3d")
 UpSetR::upset(fromList(edgeR_sig),
               sets = order_upset,
               order.by = "freq", 
               keep.order = T,
-              text.scale = 2
+              text.scale = 3.5
 )
-grid::grid.text("Genes with effect of genotype", x=0.65, y = 0.95, gp=grid::gpar(fontsize = 24))
+grid::grid.text("Genes with effect of genotype", x=0.65, y = 0.95, gp=grid::gpar(fontsize = 48))
 
 #extract significant overlap genes
 
