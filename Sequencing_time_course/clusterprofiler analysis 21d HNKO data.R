@@ -85,26 +85,33 @@ for (i in 1:4){
 } 
 
 order_upset <- c("HNKO 21d", "HNKO 12d", "HNKO 6d","HNKO 3d")
-UpSetR::upset(fromList(edgeR_sig),
+upsetRNA <- UpSetR::upset(UpSetR::fromList(edgeR_sig),
               sets = order_upset,
               order.by = "freq", 
               keep.order = T,
               text.scale = 3.5
 )
+
 grid::grid.text("Genes with effect of genotype", x=0.65, y = 0.95, gp=grid::gpar(fontsize = 48))
+tiff("UpsetRNA.tif", unit = "cm", height = 25, width = 50, res = 600)
+upsetRNA
+
+grid::grid.text("Genes with effect of genotype", x=0.65, y = 0.95, gp=grid::gpar(fontsize = 30))
+dev.off()
 
 #extract significant overlap genes
 
+
 overlap_genes <- as.data.frame(edgeR_sig[[1]]) %>%
-  dplyr::filter(edgeR_sig$KO_at_3d %in% edgeR_sig$KO_at_6d &
-                  edgeR_sig$KO_at_3d %in% edgeR_sig$KO_at_12d &
-                  edgeR_sig$KO_at_3d %in% edgeR_sig$KO_at_21d
+  dplyr::filter(edgeR_sig[[1]] %in% edgeR_sig[[2]] &
+                  edgeR_sig[[1]] %in% edgeR_sig[[3]] &
+                  edgeR_sig[[1]] %in% edgeR_sig[[4]]
                   )
 overlap_genes <- overlap_genes %>% 
   dplyr::filter(!is.na(overlap_genes))
 colnames(overlap_genes) <- "Symbol"
 
-overlap_entrez <- bitr(overlap_genes$Symbol, 
+overlap_entrez <- clusterProfiler::bitr(overlap_genes$Symbol, 
                              fromType = "SYMBOL", 
                              toType = "ENTREZID", 
                              OrgDb = "org.Mm.eg.db",
@@ -121,7 +128,13 @@ goResults_overlap <- enrichGO(gene = overlap_entrez$ENTREZID,
                                      universe = overlap_bg$ENTREZID,
                                      OrgDb = org.Mm.eg.db,
                                      ont = "BP")
-enrichplot::dotplot(goResults_overlap)+ggtitle("Overlap Genes GO-terms")
+rnaGO <- enrichplot::dotplot(goResults_overlap)+ggtitle("Overlap Genes GO-terms")
+
+tiff("GORNA.tif", unit = "cm", height = 10, width = 25, res = 300)
+rnaGO
+dev.off()
+
+
 cnet
 cpm_matrix <- openxlsx::read.xlsx(here("Sequencing_time_course/cpmData sorted by genotype updated 17.03.20.xlsx"))
 

@@ -236,7 +236,7 @@ for (i in 1:4){
 
 order_upset <- c("HNKO 21d", "HNKO 12d", "HNKO 6d","HNKO 3d")
 View(significant_proteins_upset)
-UpSetR::upset(UpSetR::fromList(significant_proteins_upset),
+upset <-UpSetR::upset(UpSetR::fromList(significant_proteins_upset),
       sets = order_upset,
       order.by = "freq", 
       keep.order = T,
@@ -245,6 +245,13 @@ UpSetR::upset(UpSetR::fromList(significant_proteins_upset),
 
   grid::grid.text("Plasma Proteomics", x=0.65, y = 0.95, gp=grid::gpar(fontsize = 30))
 
+  
+  tiff("upset.tif", unit = "cm", height = 14, width = 25, res = 300)
+  upset
+  grid::grid.text("Plasma Proteomics", x=0.65, y = 0.95, gp=grid::gpar(fontsize = 30))
+  dev.off()
+  
+  
 View(significant_proteins_upset)
 library(grid)
 
@@ -302,6 +309,7 @@ setup_proteomics <- setup_proteomics %>%
 setup_heatmap <- setup_proteomics %>% 
   dplyr::arrange(Time, desc(Genotype))
 
+
 Plasma_proteomics_overlap <- Plasma_proteomics_dataset %>% 
   dplyr::filter(Gene_names %in% overlap_proteins$Genes) %>% 
   dplyr::distinct(Gene_names, .keep_all = T)
@@ -348,6 +356,11 @@ pheatmap::pheatmap(Plasma_proteomics_overlap,
          labels_col = "",
          main = "Proteins w. main effect of genotype at all time points"
 )
+
+tiff("heatmap.tif", unit = "cm", height = 10, width = 25, res = 300)
+heatmap
+
+dev.off()
 
 #####Extract early event proteins####
 unique_day3 <- overlap_proteins <- HNKO_3d_sig

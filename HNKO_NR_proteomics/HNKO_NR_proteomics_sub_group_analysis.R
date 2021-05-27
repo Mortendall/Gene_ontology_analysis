@@ -5,6 +5,7 @@ library(openxlsx)
 library(clusterProfiler)
 
 limma_results <- vector(mode = "list", length = 4)
+
 temporary_result <- data.frame(NA, NA, NA, NA)
 
 for (i in 1:4){
@@ -115,7 +116,11 @@ go_Results_NR <- enrichGO(gene = NR_entrez$ENTREZID,
                             universe = NR_entrez_bg$ENTREZID,
                             OrgDb = org.Mm.eg.db,
                             ont = "BP")
-enrichplot::dotplot(go_Results_NR)+ggtitle("HNKO Con vs NR" )
+GO_NR <- enrichplot::dotplot(go_Results_NR)+ggtitle("HNKO Con vs NR" )
+
+tiff("GO_NR.tif", unit = "cm", height = 10, width = 20, res = 300)
+GO_NR
+dev.off()
 
 con_entrez <- bitr(HNKO_effect_sig$Gene,
                   fromType = "SYMBOL",
@@ -139,13 +144,20 @@ limma_results_sig <- limma_results
   } 
 
 order_upset <- c("Genotype in NR", "Genotype in control", "Treatment in KO","Treatment in WT")
-UpSetR::upset(fromList(limma_results_sig),
+upset_NR <-UpSetR::upset(fromList(limma_results_sig),
               sets = order_upset,
               order.by = "freq", 
               keep.order = T,
-              text.scale = 2,
+              text.scale = 3.5,
 )
+
 grid::grid.text("Significantly altered proteins", x=0.65, y = 0.95, gp=grid::gpar(fontsize = 20))
+
+tiff("UpsetProtein_NR.tif", unit = "cm", height = 25, width = 35, res = 300)
+upset_NR
+
+grid::grid.text("Significantly altered proteins", x=0.7, y = 0.95, gp=grid::gpar(fontsize = 30))
+dev.off()
 
 #####heatmap of ox-red prod####
 oxphos_proteins <- go_Results_NR@result$geneID[[1]]
@@ -230,7 +242,7 @@ key$group <- factor(key$group, c("WT Control", "HNKO Control", "WT NR", "HNKO NR
 
 
 
-pheatmap::pheatmap(res_ox,
+OxRed <- pheatmap::pheatmap(res_ox,
          treeheight_col = 0,
          treeheight_row = 0,
          scale = "row",
@@ -248,6 +260,11 @@ pheatmap::pheatmap(res_ox,
          show_rownames = F,
          main = "Oxidation-reduction process"
 )
+
+tiff("Heatmap_OxRed.tif", unit = "cm", height = 10, width = 15, res = 300)
+OxRed
+
+dev.off()
 
 #try to run the GO-analysis function from prim hep
 #' Gene ontology enrichment analysis of genes generated from a results file
@@ -325,7 +342,7 @@ rownames(key) <- setup_ordered$sample
 
 key$group <- factor(key$group, levels = c("WT_Control","KO_Control", "WT_NR", "KO_NR"))
 
-pheatmap::pheatmap(res_NAD,
+NAD_syn <- pheatmap::pheatmap(res_NAD,
                    treeheight_col = 0,
                    treeheight_row = 0,
                    scale = "row",
@@ -345,6 +362,12 @@ pheatmap::pheatmap(res_NAD,
                    cluster_rows = F
 )
 
+tiff("Heatmap_NADSYN.tif", unit = "cm", height = 10, width = 15, res = 300)
+NAD_syn
+
+dev.off()
+
+
 #Do the same for NAD consumers
 NAD_consumers <- c("Sirt1", "Sirt2", "Sirt3", "Sirt4", "Sirt5", "Sirt6", "Sirt7", "Parp1", "Parp4", "Parp14", "Parp3", "Parp12", "Parp12", "Parp9", "Parp10", "Cd38", "Nadk", "Sarm1")
 NAD_consumers <- sort(NAD_consumers)
@@ -362,7 +385,7 @@ res_con <- res_con %>%
   dplyr::select(setup_ordered$sample) 
 
 
-pheatmap::pheatmap(res_con,
+NAD_con <- pheatmap::pheatmap(res_con,
                    treeheight_col = 0,
                    treeheight_row = 0,
                    scale = "row",
@@ -381,6 +404,11 @@ pheatmap::pheatmap(res_con,
                    main = "NAD-consumers",
                    cluster_rows = F
 )
+
+tiff("Heatmap_NADCON.tif", unit = "cm", height = 10, width = 15, res = 300)
+NAD_con
+
+dev.off()
 
 #how many of these are significant?
 

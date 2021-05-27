@@ -119,10 +119,10 @@ for (i in resultTables_proteomics){
 getwd()
 
 #####GO analysis#####
-resultTables_proteomics <- list("Genotype_3" = NA,
-                                "Genotype_6" = NA,
-                                "Genotype_12" = NA,
-                                "Genotype_21" = NA
+resultTables_proteomics <- list("HNKO 3d" = NA,
+                                "HNKO 6d" = NA,
+                                "HNKO 12d" = NA,
+                                "HNKO 21d" = NA
                                 )
 for (i in 1:4){
   resultTables_proteomics[[i]] <- openxlsx::read.xlsx(here::here("Sequencing_time_course/limma_results_proteomics_time_course_liver.xlsx"),i)
@@ -135,20 +135,23 @@ for (i in 1:4){
   proteomics_sig[[i]]<-proteomics_sig[[i]]$Gene
 } 
 
-order_upset <- c("Genotype_21", "Genotype_12", "Genotype_6","Genotype_3")
-UpSetR::upset(fromList(proteomics_sig),
+order_upset <- c("HNKO 21d", "HNKO 12d", "HNKO 6d","HNKO 3d")
+upsetProt <-UpSetR::upset(fromList(proteomics_sig),
               sets = order_upset,
               order.by = "freq", 
               keep.order = T,
-              text.scale = 2,
+              text.scale = 3.5,
 )
-grid::grid.text("Proteins with effect of genotype", x=0.65, y = 0.95, gp=grid::gpar(fontsize = 24))
+#tiff("UpsetProtein.tif", unit = "cm", height = 25, width = 35, res = 300)
+upsetProt
 
+grid::grid.text("Proteins with effect of genotype", x=0.65, y = 0.95, gp=grid::gpar(fontsize = 30))
+dev.off()
 #GO for overlap genes
 overlap_genes <- as.data.frame(proteomics_sig[[1]]) %>%
-  dplyr::filter(proteomics_sig$Genotype_3 %in% proteomics_sig$Genotype_6 &
-                  proteomics_sig$Genotype_3 %in% proteomics_sig$Genotype_12 &
-                  proteomics_sig$Genotype_3 %in% proteomics_sig$Genotype_21
+  dplyr::filter(proteomics_sig[[1]]%in% proteomics_sig[[2]] &
+                  proteomics_sig[[1]]%in% proteomics_sig[[3]]  &
+                  proteomics_sig[[1]]%in% proteomics_sig[[4]] 
   )
 overlap_genes <- overlap_genes %>% 
   dplyr::filter(!is.na(overlap_genes))
@@ -171,8 +174,12 @@ goResults_overlap <- enrichGO(gene = overlap_entrez$ENTREZID,
                               universe = overlap_bg$ENTREZID,
                               OrgDb = org.Mm.eg.db,
                               ont = "BP")
-enrichplot::dotplot(goResults_overlap)+ggtitle("Overlap Protein GO-terms")
+protGO <- enrichplot::dotplot(goResults_overlap)+ggtitle("Overlap Proteins GO-terms")
 
+tiff("GOProt.tif", unit = "cm", height = 10, width = 25, res = 300)
+
+protGO
+dev.off()
 #old GO analysis
 HNKO_3d <- resultTables_proteomics$Genotype_3
 View(HNKO_3d)
@@ -305,4 +312,9 @@ goResults_main_proteins<- enrichGO(gene = main_proteins$ENTREZID,
                                      universe = overlap_bg$ENTREZID,
                                      OrgDb = org.Mm.eg.db,
                                      ont = "BP")
-enrichplot::dotplot(goResults_main_proteins)+ggtitle("Proteins with main effect of genotype")
+plot <- enrichplot::dotplot(goResults_main_proteins)+ggtitle("Proteins with main effect of genotype")
+
+tiff("OxRed.tif", unit = "cm", height = 10, width = 25, res = 300)
+plot
+
+dev.off()

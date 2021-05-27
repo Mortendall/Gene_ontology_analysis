@@ -184,19 +184,19 @@ KO_list <- KO_control_list_significant[,c(8,2)]
 View(KO_control_list)
 KO_background <- KO_control_list[,c(8,2)]
 
-eg= bitr(KO_list$Gene, 
+eg= clusterProfiler::bitr(KO_list$Gene, 
          fromType = "SYMBOL", 
          toType = "ENTREZID", 
          OrgDb = "org.Mm.eg.db",
          drop = T)
 View(eg)
 
-bg = bitr(KO_background$Gene, 
+bg = clusterProfiler::bitr(KO_background$Gene, 
           fromType = "SYMBOL", 
           toType = "ENTREZID", 
           OrgDb = "org.Mm.eg.db",
           drop = T)
-goResults <- enrichGO(gene = eg$ENTREZID,
+goResults <- clusterProfiler::enrichGO(gene = eg$ENTREZID,
                       universe = bg$ENTREZID,
                       OrgDb = org.Mm.eg.db,
                       ont = "BP")
