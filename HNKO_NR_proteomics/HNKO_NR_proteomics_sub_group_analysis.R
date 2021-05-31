@@ -535,9 +535,9 @@ transporter <- pheatmap::pheatmap(res_ox,
                             annotation_col = key,
                             show_colnames = F,
                             show_rownames = T,
-                            main = "Calcium Binding Proteins"
+                            main = "Mitochondrial Transporters"
 )
-tiff("Heatmap_calcium.tif", unit = "cm", height = 10, width = 15, res = 300)
+tiff("Mitotransport.tif", unit = "cm", height = 15, width = 20, res = 300)
 transporter
 
 dev.off()
