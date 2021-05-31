@@ -454,3 +454,90 @@ pheatmap::pheatmap(res_20,
                    main = "NAD-consumers",
                    cluster_rows = F
 )
+
+#####heatmap of mitochondrial transporters####
+#re-ran go_Results_NR but with MF rather than BP
+go_Results_NR <- setReadable(go_Results_NR, OrgDb = org.Mm.eg.db, keyType = "ENTREZID")
+transporter_proteins <- go_Results_NR@result$geneID[[4]]
+  transporter_proteins <- unlist(str_split(transporter_proteins, "/"))
+
+
+expressions <- data.table::fread(here::here("HNKO_NR_proteomics/expressions.csv"), header = TRUE)
+setup <- data.table::fread(here::here("HNKO_NR_proteomics/setup.csv"))
+data.table::setnames(setup, c("sample", "Genotype", "Treatment"))
+setup[, group:=paste(Genotype, Treatment, sep = "_")]
+
+setup <- setup[sample != "330"]
+#330 is the steatotic mouse
+expressions <- expressions %>%
+  dplyr::select(!"330")
+
+res <- limma::normalizeBetweenArrays(log(as.matrix(expressions[,-c(1:2)])), method = "quantile")
+res <- as.data.frame(res)
+res <- res %>% 
+  dplyr::mutate(Gene = expressions$Gene)
+
+
+
+
+res_ox <- res %>% 
+  dplyr::filter(Gene %in% transporter_proteins) %>% 
+  dplyr::distinct(Gene, .keep_all = T)
+rownames(res_ox) <- res_ox$Gene 
+res_ox <- res_ox %>%
+  dplyr::select(-Gene)
+
+setup_ordered <- setup
+setup_ordered <- setup_ordered %>%
+  dplyr::mutate(
+    group = dplyr::case_when(
+      group == "WT_Control" ~ "WT Control",
+      group == "KO_Control" ~ "HNKO Control",
+      group == "WT_NR" ~ "WT NR",
+      group == "KO_NR" ~ "HNKO NR"
+    )
+  )
+order <- c("WT Control", "HNKO Control", "WT NR", "HNKO NR")
+
+
+setup_ordered <- setup_ordered %>% 
+  dplyr::arrange(Treatment,desc(Genotype))
+
+class(colnames(res_ox))
+setup_ordered$sample <- as.character(setup_ordered$sample)
+  res_ox <- res_ox %>% 
+  dplyr::select(setup_ordered$sample)
+
+setup_ordered <- setup_ordered %>% 
+  dplyr::filter(!sample == 330)
+key <- as.data.frame(setup_ordered)
+
+key <- key %>% 
+  dplyr::select(group)
+rownames(key) <- setup_ordered$sample
+key$group <- factor(key$group, c("WT Control", "HNKO Control", "WT NR", "HNKO NR"))
+
+
+
+transporter <- pheatmap::pheatmap(res_ox,
+                            treeheight_col = 0,
+                            treeheight_row = 0,
+                            scale = "row",
+                            legend = T,
+                            na_col = "white",
+                            Colv = NA,
+                            na.rm = T,
+                            cluster_cols = F,
+                            fontsize_row = 8,
+                            fontsize_col = 8,
+                            cellwidth = 10,
+                            cellheight = 8,
+                            annotation_col = key,
+                            show_colnames = F,
+                            show_rownames = T,
+                            main = "Calcium Binding Proteins"
+)
+tiff("Heatmap_calcium.tif", unit = "cm", height = 10, width = 15, res = 300)
+transporter
+
+dev.off()
