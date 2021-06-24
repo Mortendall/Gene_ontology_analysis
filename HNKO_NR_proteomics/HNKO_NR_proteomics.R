@@ -14,7 +14,7 @@ library(gridExtra)
 library(UpSetR)
 
 expressions <- fread("R/Lars Proteomic Data/expressions.csv", header = TRUE)
-setup <- fread("R/Lars Proteomic Data/setup.csv")
+setup <- openxlsx::read.xlsx(here::here("Sequencing_time_course/setup.xlsx"))
 setnames(setup, c("sample", "Genotype", "Treatment"))
 setup[, group:=paste(Genotype, Treatment, sep = "_")]
 View(setup)

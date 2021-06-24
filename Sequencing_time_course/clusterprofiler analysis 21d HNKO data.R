@@ -212,8 +212,8 @@ goResults_3d <- setReadable(goResults_3d, keyType = "ENTREZID", OrgDb = org.Mm.e
 goResults_3d_CC<- enrichGO(gene = day3_entrez$ENTREZID,
                         universe = overlap_bg$ENTREZID,
                         OrgDb = org.Mm.eg.db,
-                        ont = "CC")
-enrichplot::dotplot(goResults_3d_CC)+ggtitle("Genotype effect - Day 3")
+                        ont = "MF")
+enrichplot::dotplot(goResults_3d_CC)+ggtitle("Genotype effect - Day 3 MF")
 #day 21 significance test
 genes_21d <- as.data.frame(edgeR_sig[[4]])
 genes_21d <- genes_21d %>% 
@@ -296,6 +296,86 @@ calcium_hm<- pheatmap::pheatmap(cpm_calcium,
                             cellheight = 4,
                             annotation_col = key,
                             show_colnames = F,
-                            show_rownames = F,
-                            main = "Oxidation-reduction process"
+                            show_rownames = T,
+                            main = "Calcium Binding Proteins"
 )
+
+#check volcano plot of calcium ion genes for day 3
+calcium_edgeR_data <- edgeR_data[[1]] %>% 
+  dplyr::filter(SYMBOL %in% Proteinlist_table) 
+
+ggplot2::ggplot(calcium_edgeR_data, aes(x = logFC, y = -log(FDR), label = SYMBOL))+
+  geom_point()+
+  xlim(-5, 5)+
+  geom_text(aes(label = SYMBOL))
+m
+#heatmap of fatty acid metabolic processes
+FA_binding_proteins <- goResults_3d@result[5,]$geneID
+Proteinlist_table <- read.table(text = FA_binding_proteins, sep = "/") 
+Proteinlist_table <- t(Proteinlist_table)
+cpm_matrix <- openxlsx::read.xlsx(here::here("Sequencing_time_course/cpm_matrix.xlsx"))
+setup <- openxlsx::read.xlsx(here::here("Sequencing_time_course/setup.xlsx"))
+
+cpm_FA <- cpm_matrix %>% 
+  dplyr::filter(SYMBOL %in% Proteinlist_table)
+
+setup <- setup %>% 
+  dplyr::mutate(Group = paste(Genotype, Time, sep = "_"))
+setup <- setup %>% 
+  dplyr::arrange(Time, desc(Genotype))
+setup$ID <- as.character(setup$ID)
+colnames(cpm_FA)<-as.character(colnames(cpm_FA))
+setup <- setup %>% 
+  dplyr::filter(ID %in% colnames(cpm_FA))
+
+cpm_FA_key <- cpm_FA %>% 
+  dplyr::select(ENSEMBL, SYMBOL)
+cpm_FA <- cpm_FA %>% 
+  dplyr::select(-ENSEMBL, -SYMBOL)
+
+cpm_FA <- cpm_FA %>% 
+  dplyr::select(setup$ID)
+cpm_FA <- as.matrix(cpm_FA)
+rownames(cpm_FA)<-cpm_FA_key$SYMBOL
+key <- as.data.frame(setup$Group)
+colnames(key)<-"Group"
+rownames(key) <- setup$ID
+key$Group <- factor(key$Group, c("WT_3","KO_3","WT_6","KO_6","WT_12","KO_12","WT_21","KO_21"))
+
+FA_hm<- pheatmap::pheatmap(cpm_FA,
+                                treeheight_col = 0,
+                                treeheight_row = 0,
+                                scale = "row",
+                                legend = T,
+                                na_col = "white",
+                                Colv = NA,
+                                na.rm = T,
+                                cluster_cols = F,
+                                fontsize_row = 5,
+                                fontsize_col = 8,
+                                cellwidth = 8,
+                                cellheight = 6,
+                                annotation_col = key,
+                                show_colnames = F,
+                                show_rownames = T,
+                                main = "Fatty acid metabolic processes genes"
+)
+
+#####Showing CPM for individual genes####
+
+cpm_FA_long <- as.data.frame(cpm_FA)
+cpm_FA_long <- cpm_FA_long %>% 
+  dplyr::mutate(Symbol = rownames(cpm_FA_long))
+  cpm_FA_long <- pivot_longer(cpm_FA_long, cols = -Symbol, names_to = "ID", values_to = "CPM")
+
+cpm_joined <- left_join(cpm_FA_long,setup, by = "ID")
+cpm_joined$Time <- as.factor(cpm_joined$Time)
+
+cpm_summary <- cpm_joined %>%  
+  group_by(Symbol, Group) %>% 
+  rstatix::get_summary_stats(CPM, type = "mean_se")
+
+cpm_summary$Group <- factor(cpm_summary$Group, levels = c("WT_3","KO_3","WT_6","KO_6","WT_12","KO_12","WT_21","KO_21"))
+
+ggplot(subset(cpm_summary, Symbol == "Sirt1"), aes(Group, mean))+
+  geom_col()

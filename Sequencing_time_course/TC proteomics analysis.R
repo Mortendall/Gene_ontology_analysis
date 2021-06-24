@@ -181,7 +181,7 @@ tiff("GOProt.tif", unit = "cm", height = 10, width = 25, res = 300)
 protGO
 dev.off()
 #old GO analysis
-HNKO_3d <- resultTables_proteomics$Genotype_3
+HNKO_3d <- resultTables_proteomics$`HNKO 3d`
 View(HNKO_3d)
 HNKO_3d_sig <- HNKO_3d %>%
   filter(adj.P.Val<0.05)
@@ -213,8 +213,8 @@ goResults_HNKO_3d_neg<- enrichGO(gene = HNKO_3d_neg_enztrez$ENTREZID,
 goResults_HNKO_3d<- enrichGO(gene = HNKO_3d_enztrez$ENTREZID,
                                  universe = HNKO_3d_bg$ENTREZID,
                                  OrgDb = org.Mm.eg.db,
-                                 ont = "BP")
-dotplot(goResults_HNKO_3d_neg, showCategory = 10)
+                                 ont = "MF")
+dotplot(goResults_HNKO_3d, showCategory = 10)
 goResults_HNKO_3d_neg <- setReadable(goResults_HNKO_3d_neg, OrgDb = org.Mm.eg.db, keyType = "ENTREZID")
 cnetplot(goResults_HNKO_3d_neg)
 ?dotplot
@@ -224,7 +224,7 @@ cnetplot(goResults_HNKO_3d)
 View(goResults_HNKO_3d)
 
 #HNKO day 21
-day_21_proteins <- proteomics_sig$Genotype_21
+day_21_proteins <- proteomics_sig$`HNKO 21d`
 day_21_entrez <-  bitr(day_21_proteins, 
                       fromType ="SYMBOL", 
                       toType = "ENTREZID", 
