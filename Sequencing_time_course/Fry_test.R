@@ -38,7 +38,7 @@ rownames(key) <- setup$ID
 AnnotationDbi::Rkeys(org.Mm.egGO2ALLEGS)<-Go_term
 Go_term <- "GO:1903209"
 
-DeepFryer <- function(Go_term, cpm_matrix, setup, org.database){
+DeepFryer <- function(Go_term, cpm_matrix, setup){
   #Make design and contrast matrix
   design <- stats::model.matrix(~ 0 + Group, setup)
   colnames(design) <- stringr::str_remove_all(colnames(design), "Group")

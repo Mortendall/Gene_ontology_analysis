@@ -333,6 +333,7 @@ cpm_FA_key <- cpm_FA %>%
 cpm_FA <- cpm_FA %>% 
   dplyr::select(-ENSEMBL, -SYMBOL)
 
+
 cpm_FA <- cpm_FA %>% 
   dplyr::select(setup$ID)
 cpm_FA <- as.matrix(cpm_FA)
@@ -360,6 +361,10 @@ FA_hm<- pheatmap::pheatmap(cpm_FA,
                                 show_rownames = T,
                                 main = "Fatty acid metabolic processes genes"
 )
+
+ tiff("FA_hm.tif", unit = "cm", height = 12, width = 24, res = 600)
+ FA_hm
+ dev.off()
 
 #####Showing CPM for individual genes####
 

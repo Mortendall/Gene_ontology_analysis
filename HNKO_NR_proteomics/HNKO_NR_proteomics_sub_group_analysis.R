@@ -100,7 +100,7 @@ HNKO_entrez <- bitr(HNKO_effect_sig$Gene,
 go_Results_HNKO <- enrichGO(gene = HNKO_entrez$ENTREZID,
                                    universe = Background$ENTREZID,
                                    OrgDb = org.Mm.eg.db,
-                                   ont = "BP")
+                                   ont = "MF")
 NR_entrez <- bitr(NR_effect_sig$Gene,
                     fromType = "SYMBOL",
                     toType = "ENTREZID",
@@ -115,7 +115,7 @@ NR_entrez_bg <- bitr(NR_effect$Gene,
 go_Results_NR <- enrichGO(gene = NR_entrez$ENTREZID,
                             universe = NR_entrez_bg$ENTREZID,
                             OrgDb = org.Mm.eg.db,
-                            ont = "BP")
+                            ont = "MF")
 GO_NR <- enrichplot::dotplot(go_Results_NR)+ggtitle("HNKO Con vs NR" )
 
 tiff("GO_NR.tif", unit = "cm", height = 10, width = 20, res = 300)
@@ -541,3 +541,71 @@ tiff("Mitotransport.tif", unit = "cm", height = 15, width = 20, res = 300)
 transporter
 
 dev.off()
+
+#####Igraph of oxidoreducaseactivity proteins#####
+
+go_results <- list("Treatment in WT" = NA,
+                   "Treatment in KO" = NA, 
+                   "Genotype in control" = NA, 
+                   "Genotype in NR" = NA)
+for (i in 1:4){
+  go_results[[i]]<- openxlsx::read.xlsx(here::here("HNKO_NR_proteomics/goData_NR_prot_MF.xlsx"),i)
+}
+
+oxphos_proteins <- go_Results_NR@result$geneID[[1]]
+oxphos_proteins <- unlist(str_split(oxphos_proteins, "/"))
+
+cpm_key <-   clusterProfiler::bitr(
+  oxphos_proteins,
+  fromType = "ENTREZID",
+  toType = "SYMBOL",
+  OrgDb = "org.Mm.eg.db"
+)
+
+oxphos_name <- as.vector(cpm_key$SYMBOL)
+g1 <- igraph::graph(oxphos_name, isolates = oxphos_name)
+plot(g1, edge.arrow.size = 0.5)
+group_anno <- openxlsx::read.xlsx(here::here("HNKO_NR_proteomics/annotation_oxRed.xlsx"), colNames = T)
+all(group_anno$SYMBOL == oxphos_name)
+
+#try to link together the terms that are related by group
+
+group_anno <- group_anno %>% 
+  dplyr::mutate(color = case_when(
+    Group == "NAD" ~ "grey",
+    Group == "NADP" ~ "orange",
+    Group == "FAD" ~ "red",
+    Group == "FMN(H2)" ~"turquoise",
+    Group == "Oxidase" ~ "green1",
+    Group == "OxPhos" ~ "purple",
+    Group == "NAD/OxPhos" ~ "cyan",
+    Group == "ROS" ~ "yellow", 
+    Group == "Other" ~ "green2"
+  ))
+Group <- group_anno$SYMBOL
+color_vector <- group_anno$color
+color_vector[73:81]<- "white"
+g3 <- igraph::graph.data.frame(group_anno,
+                               directed = F)
+V(g3)$label.cex = 0.65
+plot(g3, edge.arrow.size = 0.5, vertex.color = color_vector)
+legend("topleft",legend = unique(group_anno$Group),
+       pt.bg  = unique(group_anno$color),
+       pch    = 21,
+       cex    = 1,
+       bty    = "n",
+       title  = "Groups")
+
+
+
+
+ tiff("HNKO_NR_proteomics/Network_plot.tif", unit = "cm", height = 25, width = 25, res = 300)
+ plot(g3, edge.arrow.size = 0.5, vertex.color = color_vector)
+ legend("topleft",legend = unique(group_anno$Group),
+        pt.bg  = unique(group_anno$color),
+        pch    = 21,
+        cex    = 1,
+        bty    = "n",
+        title  = "Groups")
+ dev.off()
+

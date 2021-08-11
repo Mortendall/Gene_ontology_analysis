@@ -209,11 +209,12 @@ dim(HNKO_3d_enztrez)
 goResults_HNKO_3d_neg<- enrichGO(gene = HNKO_3d_neg_enztrez$ENTREZID,
                               universe = HNKO_3d_bg$ENTREZID,
                               OrgDb = org.Mm.eg.db,
-                              ont = "BP")
+                              ont = "MF")
 goResults_HNKO_3d<- enrichGO(gene = HNKO_3d_enztrez$ENTREZID,
                                  universe = HNKO_3d_bg$ENTREZID,
                                  OrgDb = org.Mm.eg.db,
                                  ont = "MF")
+goResults_HNKO_3d <- setReadable(goResults_HNKO_3d, OrgDb = org.Mm.eg.db, keyType = "ENTREZID")
 dotplot(goResults_HNKO_3d, showCategory = 10)
 goResults_HNKO_3d_neg <- setReadable(goResults_HNKO_3d_neg, OrgDb = org.Mm.eg.db, keyType = "ENTREZID")
 cnetplot(goResults_HNKO_3d_neg)
@@ -233,7 +234,7 @@ day_21_entrez <-  bitr(day_21_proteins,
 goResults_HNKO_21d<- enrichGO(gene = day_21_entrez$ENTREZID,
                              universe = overlap_bg$ENTREZID,
                              OrgDb = org.Mm.eg.db,
-                             ont = "BP")
+                             ont = "MF")
 enrichplot::dotplot(goResults_HNKO_21d)
 #HNKO day 3
 day_3_proteins <- proteomics_sig$Genotype_3
@@ -318,3 +319,190 @@ tiff("OxRed.tif", unit = "cm", height = 10, width = 25, res = 300)
 plot
 
 dev.off()
+
+#####Heatmap generation#####
+OxRed_proteins <- goResults_HNKO_3d@result[6,]$geneID
+Proteinlist_table <- read.table(text = OxRed_proteins , sep = "/") 
+Proteinlist_table <- t(Proteinlist_table)
+cpm_matrix <- openxlsx::read.xlsx(here::here("Sequencing_time_course/Proteomics dataset.xlsx"))
+setup <- openxlsx::read.xlsx(here::here("Sequencing_time_course/setup.xlsx"))
+cpm_key <- cpm_matrix %>% 
+  dplyr::select(Gene_names, Protein_ID)
+cpm_matrix <- normalizeBetweenArrays(log(as.matrix(cpm_matrix[,-c(1:2)])), method = "quantile")
+
+cpm_matrix <- as.data.frame(cpm_matrix) %>% 
+  dplyr::mutate(Gene_names = cpm_key$Gene_names,
+                Protein_ID = cpm_key$Protein_ID)
+
+cpm_FA <- cpm_matrix %>% 
+  dplyr::filter(Gene_names %in% Proteinlist_table)
+cpm_FA <- distinct(cpm_FA, Gene_names, .keep_all = T)
+
+setup <- setup %>% 
+  dplyr::mutate(Group = paste(Genotype, Time, sep = "_"))
+setup <- setup %>% 
+  dplyr::arrange(Time, desc(Genotype))
+setup$ID <- as.character(setup$ID)
+
+colnames(cpm_FA)<-as.character(colnames(cpm_FA))
+setup <- setup %>% 
+  dplyr::filter(ID %in% colnames(cpm_FA))
+
+cpm_FA_key <- cpm_FA %>% 
+  dplyr::select(Gene_names, Protein_ID)
+cpm_FA <- cpm_FA %>% 
+  dplyr::select(-Gene_names, -Protein_ID)
+
+
+cpm_FA <- cpm_FA %>% 
+  dplyr::select(setup$ID)
+cpm_FA <- as.matrix(cpm_FA)
+rownames(cpm_FA)<-cpm_FA_key$Gene_names
+key <- as.data.frame(setup$Group)
+colnames(key)<-"Group"
+rownames(key) <- setup$ID
+key$Group <- factor(key$Group, c("WT_3","KO_3","WT_6","KO_6","WT_12","KO_12","WT_21","KO_21"))
+
+FA_hm<- pheatmap::pheatmap(cpm_FA,
+                           treeheight_col = 0,
+                           treeheight_row = 0,
+                           scale = "row",
+                           legend = T,
+                           na_col = "white",
+                           Colv = NA,
+                           na.rm = T,
+                           cluster_cols = F,
+                           fontsize_row = 5,
+                           fontsize_col = 8,
+                           cellwidth = 8,
+                           cellheight = 4,
+                           annotation_col = key,
+                           show_colnames = F,
+                           show_rownames = T,
+                           main = "Oxidation/Reduction"
+)
+
+#####Test monooxygenase protein abundance#####
+HNKO_MF_GO_results <- readRDS("~/R/tmp/SCS/HNKO_MF_GO_results.rds")
+
+Proteinlist_table <- read.table(text =HNKO_MF_GO_results[[3]]@result$geneID[2] , sep = "/") 
+Proteinlist_table <- t(Proteinlist_table)
+cpm_matrix <- openxlsx::read.xlsx(here::here("Sequencing_time_course/Proteomics dataset.xlsx"))
+setup <- openxlsx::read.xlsx(here::here("Sequencing_time_course/setup.xlsx"))
+cpm_key <- cpm_matrix %>% 
+  dplyr::select(Gene_names, Protein_ID)
+cpm_matrix <- normalizeBetweenArrays(log(as.matrix(cpm_matrix[,-c(1:2)])), method = "quantile")
+
+cpm_matrix <- as.data.frame(cpm_matrix) %>% 
+  dplyr::mutate(Gene_names = cpm_key$Gene_names,
+                Protein_ID = cpm_key$Protein_ID)
+
+cpm_FA <- cpm_matrix %>% 
+  dplyr::filter(Gene_names %in% Proteinlist_table)
+cpm_FA <- distinct(cpm_FA, Gene_names, .keep_all = T)
+
+setup <- setup %>% 
+  dplyr::mutate(Group = paste(Genotype, Time, sep = "_"))
+setup <- setup %>% 
+  dplyr::arrange(Time, desc(Genotype))
+setup$ID <- as.character(setup$ID)
+
+colnames(cpm_FA)<-as.character(colnames(cpm_FA))
+setup <- setup %>% 
+  dplyr::filter(ID %in% colnames(cpm_FA))
+
+cpm_FA_key <- cpm_FA %>% 
+  dplyr::select(Gene_names, Protein_ID)
+cpm_FA <- cpm_FA %>% 
+  dplyr::select(-Gene_names, -Protein_ID)
+
+
+cpm_FA <- cpm_FA %>% 
+  dplyr::select(setup$ID)
+cpm_FA <- as.matrix(cpm_FA)
+rownames(cpm_FA)<-cpm_FA_key$Gene_names
+key <- as.data.frame(setup$Group)
+colnames(key)<-"Group"
+rownames(key) <- setup$ID
+key$Group <- factor(key$Group, c("WT_3","KO_3","WT_6","KO_6","WT_12","KO_12","WT_21","KO_21"))
+
+FA_hm<- pheatmap::pheatmap(cpm_FA,
+                           treeheight_col = 0,
+                           treeheight_row = 0,
+                           scale = "row",
+                           legend = T,
+                           na_col = "white",
+                           Colv = NA,
+                           na.rm = T,
+                           cluster_cols = F,
+                           fontsize_row = 8,
+                           fontsize_col = 8,
+                           cellwidth = 8,
+                           cellheight = 8,
+                           annotation_col = key,
+                           show_colnames = F,
+                           show_rownames = T,
+                           main = "Mono oxidase proteins"
+)
+
+#####Test transporters#####
+
+Proteinlist_table <- read.table(text =HNKO_MF_GO_results[[1]]@result$geneID[17] , sep = "/") 
+Proteinlist_table <- t(Proteinlist_table)
+cpm_matrix <- openxlsx::read.xlsx(here::here("Sequencing_time_course/Proteomics dataset.xlsx"))
+setup <- openxlsx::read.xlsx(here::here("Sequencing_time_course/setup.xlsx"))
+cpm_key <- cpm_matrix %>% 
+  dplyr::select(Gene_names, Protein_ID)
+cpm_matrix <- normalizeBetweenArrays(log(as.matrix(cpm_matrix[,-c(1:2)])), method = "quantile")
+
+cpm_matrix <- as.data.frame(cpm_matrix) %>% 
+  dplyr::mutate(Gene_names = cpm_key$Gene_names,
+                Protein_ID = cpm_key$Protein_ID)
+
+cpm_FA <- cpm_matrix %>% 
+  dplyr::filter(Gene_names %in% Proteinlist_table)
+cpm_FA <- distinct(cpm_FA, Gene_names, .keep_all = T)
+
+setup <- setup %>% 
+  dplyr::mutate(Group = paste(Genotype, Time, sep = "_"))
+setup <- setup %>% 
+  dplyr::arrange(Time, desc(Genotype))
+setup$ID <- as.character(setup$ID)
+
+colnames(cpm_FA)<-as.character(colnames(cpm_FA))
+setup <- setup %>% 
+  dplyr::filter(ID %in% colnames(cpm_FA))
+
+cpm_FA_key <- cpm_FA %>% 
+  dplyr::select(Gene_names, Protein_ID)
+cpm_FA <- cpm_FA %>% 
+  dplyr::select(-Gene_names, -Protein_ID)
+
+
+cpm_FA <- cpm_FA %>% 
+  dplyr::select(setup$ID)
+cpm_FA <- as.matrix(cpm_FA)
+rownames(cpm_FA)<-cpm_FA_key$Gene_names
+key <- as.data.frame(setup$Group)
+colnames(key)<-"Group"
+rownames(key) <- setup$ID
+key$Group <- factor(key$Group, c("WT_3","KO_3","WT_6","KO_6","WT_12","KO_12","WT_21","KO_21"))
+
+FA_hm<- pheatmap::pheatmap(cpm_FA,
+                           treeheight_col = 0,
+                           treeheight_row = 0,
+                           scale = "row",
+                           legend = T,
+                           na_col = "white",
+                           Colv = NA,
+                           na.rm = T,
+                           cluster_cols = F,
+                           fontsize_row = 8,
+                           fontsize_col = 8,
+                           cellwidth = 8,
+                           cellheight = 8,
+                           annotation_col = key,
+                           show_colnames = F,
+                           show_rownames = T,
+                           main = "anion transmembrane transporter activity"
+)
