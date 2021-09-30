@@ -333,13 +333,20 @@ setup_heatmap <- setup_heatmap %>%
   ))
 
 heatmap_key <- setup_heatmap %>% 
-  dplyr::select(ID, group)
+  dplyr::select(ID, Genotype, Time)
 rownames(heatmap_key) <- heatmap_key$ID
 heatmap_key <- heatmap_key %>% 
   dplyr::select(-ID)
-heatmap_key$group <- factor(heatmap_key$group, levels = c("WT 3", "HNKO 3", "WT 6", "HNKO 6", "WT 12", "HNKO 12", "WT 21", "HNKO 21"))
-
-pheatmap::pheatmap(Plasma_proteomics_overlap,
+heatmap_key <- heatmap_key |> 
+  dplyr::mutate(Genotype = dplyr::case_when(
+    Genotype == "KO"~"HNKO",
+    TRUE ~ as.character(Genotype)
+  ))
+heatmap_key$Time <- as.factor(heatmap_key$Time)
+heatmap_key$Time <- factor(heatmap_key$Time, levels = c("3","6","12","21"))
+heatmap_key$Genotype <- factor(heatmap_key$Genotype, levels = c("WT","HNKO"))
+rownames(Plasma_proteomics_overlap) <- toupper(rownames(Plasma_proteomics_overlap))
+heatmap <- pheatmap::pheatmap(Plasma_proteomics_overlap,
          treeheight_col = 0,
          treeheight_row = 0,
          scale = "row",
@@ -354,10 +361,11 @@ pheatmap::pheatmap(Plasma_proteomics_overlap,
          cellheight = 14,
          annotation_col = heatmap_key,
          labels_col = "",
-         main = "Proteins w. main effect of genotype at all time points"
+         main = "Proteins w. main effect of genotype at all time points",
+        
 )
 
-tiff("heatmap.tif", unit = "cm", height = 10, width = 25, res = 300)
+tiff(here::here("Sequencing_time_course/plasma_heatmap.tif"), unit = "cm", height = 10, width = 25, res = 300)
 heatmap
 
 dev.off()

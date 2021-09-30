@@ -116,10 +116,17 @@ go_Results_NR <- enrichGO(gene = NR_entrez$ENTREZID,
                             universe = NR_entrez_bg$ENTREZID,
                             OrgDb = org.Mm.eg.db,
                             ont = "MF")
-GO_NR <- enrichplot::dotplot(go_Results_NR)+ggtitle("HNKO Con vs NR" )
 
-tiff("GO_NR.tif", unit = "cm", height = 10, width = 20, res = 300)
-GO_NR
+go_Results_NR_CC <- enrichGO(gene = NR_entrez$ENTREZID,
+                             universe = NR_entrez_bg$ENTREZID,
+                             OrgDb = org.Mm.eg.db,
+                             ont = "CC")
+GO_NR <- enrichplot::dotplot(go_Results_NR)+ggtitle("HNKO Con vs NR - MF" )
+GO_NR_CC <- enrichplot::dotplot(go_Results_NR_CC)+ggtitle("HNKO Con vs NR - CC")
+
+
+tiff("GO_NR_MF.tif", unit = "cm", height = 20, width = 30, res = 300)
+GO_NR/GO_NR_CC
 dev.off()
 
 con_entrez <- bitr(HNKO_effect_sig$Gene,
@@ -132,8 +139,17 @@ con_entrez <- bitr(HNKO_effect_sig$Gene,
 go_Results_con <- enrichGO(gene = con_entrez$ENTREZID,
                           universe = NR_entrez_bg$ENTREZID,
                           OrgDb = org.Mm.eg.db,
-                          ont = "BP")
-enrichplot::dotplot(go_Results_con)+ggtitle("Control WT vs HNKO" )
+                          ont = "MF")
+go_Results_con_cc <- enrichGO(gene = con_entrez$ENTREZID,
+                           universe = NR_entrez_bg$ENTREZID,
+                           OrgDb = org.Mm.eg.db,
+                           ont = "CC")
+con_plot <- enrichplot::dotplot(go_Results_con)+ggtitle("Control WT vs HNKO \n Molecular Function" )
+con_plot_cc <- enrichplot::dotplot(go_Results_con_cc)+ggtitle("Control WT vs HNKO \n Cellular Compartment" )
+
+tiff("GO_con_MF_CC.tif", unit = "cm", height = 20, width = 30, res = 300)
+con_plot/con_plot_cc
+dev.off()
 
 #####Upsetplot#####
 limma_results_sig <- limma_results
@@ -196,7 +212,7 @@ for (i in 1:4){
                    
   
 
-oxphos_proteins <- go_results[[2]]$geneID[1]
+oxphos_proteins <- go_results$geneID[1]
 oxphos_proteins <- unlist(str_split(oxphos_proteins, "/"))
 
 cpm_key <-   clusterProfiler::bitr(
@@ -253,11 +269,11 @@ OxRed <- pheatmap::pheatmap(res_ox,
          cluster_cols = F,
          fontsize_row = 5,
          fontsize_col = 8,
-         cellwidth = 3,
-         cellheight = 2,
+         cellwidth = 7,
+         cellheight = 5,
          annotation_col = key,
          show_colnames = F,
-         show_rownames = F,
+         show_rownames = T,
          main = "Oxidation-reduction process"
 )
 
@@ -552,7 +568,7 @@ for (i in 1:4){
   go_results[[i]]<- openxlsx::read.xlsx(here::here("HNKO_NR_proteomics/goData_NR_prot_MF.xlsx"),i)
 }
 
-oxphos_proteins <- go_Results_NR@result$geneID[[1]]
+oxphos_proteins <- go_results$`Treatment in KO`$geneID[[1]]
 oxphos_proteins <- unlist(str_split(oxphos_proteins, "/"))
 
 cpm_key <-   clusterProfiler::bitr(
@@ -566,6 +582,7 @@ oxphos_name <- as.vector(cpm_key$SYMBOL)
 g1 <- igraph::graph(oxphos_name, isolates = oxphos_name)
 plot(g1, edge.arrow.size = 0.5)
 group_anno <- openxlsx::read.xlsx(here::here("HNKO_NR_proteomics/annotation_oxRed.xlsx"), colNames = T)
+library(igraph)
 all(group_anno$SYMBOL == oxphos_name)
 
 #try to link together the terms that are related by group
@@ -577,7 +594,7 @@ group_anno <- group_anno %>%
     Group == "FAD" ~ "red",
     Group == "FMN(H2)" ~"turquoise",
     Group == "Oxidase" ~ "green1",
-    Group == "OxPhos" ~ "purple",
+    Group == "OxPhos" ~ "pink",
     Group == "NAD/OxPhos" ~ "cyan",
     Group == "ROS" ~ "yellow", 
     Group == "Other" ~ "green2"
@@ -595,17 +612,425 @@ legend("topleft",legend = unique(group_anno$Group),
        cex    = 1,
        bty    = "n",
        title  = "Groups")
+title("Proteins from oxidoreductase activity")
 
 
 
 
- tiff("HNKO_NR_proteomics/Network_plot.tif", unit = "cm", height = 25, width = 25, res = 300)
- plot(g3, edge.arrow.size = 0.5, vertex.color = color_vector)
- legend("topleft",legend = unique(group_anno$Group),
-        pt.bg  = unique(group_anno$color),
-        pch    = 21,
-        cex    = 1,
-        bty    = "n",
-        title  = "Groups")
+   # tiff("HNKO_NR_proteomics/Network_plot.tif", unit = "cm", height = 40, width = 40, res = 300)
+   # set.seed(42)
+   # plot(g3, vertex.color = color_vector, vertex.label.cex = 1.5, vertex.size = 15)
+   # legend("topleft",legend = unique(group_anno$Group),
+   #        pt.bg  = unique(group_anno$color),
+   #        pch    = 21,
+   #        cex    = 1.5,
+   #        bty    = "n",
+   #        title  = "Groups")
+   # title("Proteins from oxidoreductase activity \n classified by co-factor", cex.main = 2)
+   # dev.off()
+
+ #####CC for HNKO genotype effect in control#####
+ 
+ limma_results <- vector(mode = "list", length = 4)
+ 
+ temporary_result <- data.frame(NA, NA, NA, NA)
+ 
+ for (i in 1:4){
+   temporary_result <- read.xlsx("C:/Users/tvb217/Documents/R/Lars Proteomic Data/limma_results.xlsx", i)
+   limma_results[[i]]<- temporary_result
+ }
+ 
+ names(limma_results)[[1]]<- "Treatment in WT"
+ names(limma_results)[[2]]<- "Treatment in KO"
+ names(limma_results)[[3]]<- "Genotype in control"
+ names(limma_results)[[4]]<- "Genotype in NR"
+ 
+
+ 
+ NR_effect <- limma_results[[2]]
+ HNKO_effect <- limma_results[[3]]
+ 
+ NR_effect_sig <- NR_effect %>%
+   dplyr::filter(adj.P.Val < 0.05)
+
+ 
+ HNKO_effect_sig <- HNKO_effect %>%
+   dplyr::filter(adj.P.Val < 0.05)
+ 
+ Background<- bitr(HNKO_effect$Gene, 
+                   fromType = "SYMBOL", 
+                   toType = "ENTREZID", 
+                   OrgDb = "org.Mm.eg.db",
+                   drop = T)
+ 
+ HNKO_entrez <- bitr(HNKO_effect_sig$Gene,
+                     fromType = "SYMBOL",
+                     toType = "ENTREZID",
+                     OrgDb = "org.Mm.eg.db",
+                     drop = T)
+ go_Results_HNKO_CC <- enrichGO(gene = HNKO_entrez$ENTREZID,
+                             universe = Background$ENTREZID,
+                             OrgDb = org.Mm.eg.db,
+                             ont = "CC")
+ go_Results_HNKO_CC <- setReadable(go_Results_HNKO_CC, OrgDb = org.Mm.eg.db, keyType = "ENTREZID")
+ #heatmap production
+ oxphos_proteins <- go_Results_HNKO_CC@result$geneID[[5]]
+ oxphos_proteins <- unlist(str_split(oxphos_proteins, "/"))
+ 
+
+ 
+ 
+ expressions <- data.table::fread(here::here("HNKO_NR_proteomics/expressions.csv"), header = TRUE)
+ setup <- data.table::fread(here::here("HNKO_NR_proteomics/setup.csv"))
+ data.table::setnames(setup, c("sample", "Genotype", "Treatment"))
+ setup[, group:=paste(Genotype, Treatment, sep = "_")]
+ 
+ setup <- setup[sample != "330"]
+ #330 is the steatotic mouse
+ expressions <- expressions %>%
+   dplyr::select(!"330")
+ 
+ res <- limma::normalizeBetweenArrays(log(as.matrix(expressions[,-c(1:2)])), method = "quantile")
+ res <- as.data.frame(res)
+ res <- res %>% 
+   dplyr::mutate(Gene = expressions$Gene)
+ 
+ go_results <- list("Treatment in WT" = NA,
+                    "Treatment in KO" = NA, 
+                    "Genotype in control" = NA, 
+                    "Genotype in NR" = NA)
+ for (i in 1:4){
+   go_results[[i]]<- openxlsx::read.xlsx(here::here("HNKO_NR_proteomics/goData_NR_prot.xlsx"),i)
+ }
+ 
+ 
+cpm_key <- data.frame(SYMBOL = oxphos_proteins)
+
+
+ 
+ res_ox <- res %>% 
+   dplyr::filter(Gene %in% cpm_key$SYMBOL) %>% 
+   dplyr::distinct(Gene, .keep_all = T)
+ rownames(res_ox) <- res_ox$Gene 
+ res_ox <- res_ox %>%
+   dplyr::select(-Gene)
+ 
+ setup_ordered <- setup
+ setup_ordered <- setup_ordered %>%
+   dplyr::mutate(
+     group = dplyr::case_when(
+       group == "WT_Control" ~ "WT Control",
+       group == "KO_Control" ~ "HNKO Control",
+       group == "WT_NR" ~ "WT NR",
+       group == "KO_NR" ~ "HNKO NR"
+     )
+   )
+ order <- c("WT Control", "HNKO Control", "WT NR", "HNKO NR")
+ 
+ setup_ordered <- setup_ordered %>% 
+   dplyr::arrange(Treatment,desc(Genotype))
+ 
+ class(colnames(res_ox))
+ setup_ordered$sample <- as.character(setup_ordered$sample)
+ res_ox <- res_ox %>% 
+   dplyr::select(setup_ordered$sample)
+ 
+ key <- as.data.frame(setup_ordered)
+ 
+ key <- key %>% 
+   dplyr::select(group)
+ rownames(key) <- setup_ordered$sample
+ key$group <- factor(key$group, c("WT Control", "HNKO Control", "WT NR", "HNKO NR"))
+ 
+ 
+ 
+ OxRed <- pheatmap::pheatmap(res_ox,
+                             treeheight_col = 0,
+                             treeheight_row = 0,
+                             scale = "row",
+                             legend = T,
+                             na_col = "white",
+                             Colv = NA,
+                             na.rm = T,
+                             cluster_cols = F,
+                             fontsize_row = 5,
+                             fontsize_col = 8,
+                             cellwidth = 8,
+                             cellheight = 7,
+                             annotation_col = key,
+                             show_colnames = F,
+                             show_rownames = T,
+                             main = "Mitochondrial envelope"
+ )
+ MitoEnvelop <- as.data.frame(cpm_key$SYMBOL)
+ 
+ #####HEatmap for OxRed NAD binding#####
+ go_Results_NR <- setReadable(go_Results_NR, OrgDb = org.Mm.eg.db, keyType = "ENTREZID")
+ transporter_proteins <- go_Results_NR@result$geneID[[5]]
+ transporter_proteins <- unlist(str_split(transporter_proteins, "/"))
+ 
+ 
+ expressions <- data.table::fread(here::here("HNKO_NR_proteomics/expressions.csv"), header = TRUE)
+ setup <- data.table::fread(here::here("HNKO_NR_proteomics/setup.csv"))
+ data.table::setnames(setup, c("sample", "Genotype", "Treatment"))
+ setup[, group:=paste(Genotype, Treatment, sep = "_")]
+ 
+ setup <- setup[sample != "330"]
+ #330 is the steatotic mouse
+ expressions <- expressions %>%
+   dplyr::select(!"330")
+ 
+ res <- limma::normalizeBetweenArrays(log(as.matrix(expressions[,-c(1:2)])), method = "quantile")
+ res <- as.data.frame(res)
+ res <- res %>% 
+   dplyr::mutate(Gene = expressions$Gene)
+ 
+ 
+ 
+ 
+ res_ox <- res %>% 
+   dplyr::filter(Gene %in% transporter_proteins) %>% 
+   dplyr::distinct(Gene, .keep_all = T) %>% 
+   dplyr::arrange(Gene)
+ rownames(res_ox) <- res_ox$Gene 
+ res_ox <- res_ox %>%
+   dplyr::select(-Gene)
+ 
+ setup_ordered <- setup
+ setup_ordered <- setup_ordered %>%
+   dplyr::mutate(
+     group = dplyr::case_when(
+       group == "WT_Control" ~ "WT Control",
+       group == "KO_Control" ~ "HNKO Control",
+       group == "WT_NR" ~ "WT NR",
+       group == "KO_NR" ~ "HNKO NR"
+     )
+   )
+ order <- c("WT Control", "HNKO Control", "WT NR", "HNKO NR")
+ 
+ 
+ setup_ordered <- setup_ordered %>% 
+   dplyr::arrange(Treatment,desc(Genotype))
+ 
+ class(colnames(res_ox))
+ setup_ordered$sample <- as.character(setup_ordered$sample)
+ res_ox <- res_ox %>% 
+   dplyr::select(setup_ordered$sample)
+
+ 
+ setup_ordered <- setup_ordered %>% 
+   dplyr::filter(!sample == 330)
+ key <- as.data.frame(setup_ordered)
+ 
+ key <- key %>% 
+   dplyr::select(group)
+ rownames(key) <- setup_ordered$sample
+ key$group <- factor(key$group, c("WT Control", "HNKO Control", "WT NR", "HNKO NR"))
+ 
+ 
+ 
+NADOxRed <- pheatmap::pheatmap(res_ox,
+                                   treeheight_col = 0,
+                                   treeheight_row = 0,
+                                   scale = "row",
+                                   legend = T,
+                                   na_col = "white",
+                                   Colv = NA,
+                                   na.rm = T,
+                                   cluster_cols = F,
+                                  cluster_rows = F,
+                                   fontsize_row = 8,
+                                   fontsize_col = 8,
+                                   cellwidth = 10,
+                                   cellheight = 8,
+                                   annotation_col = key,
+                                   show_colnames = F,
+                                   show_rownames = T,
+                                   main = "oxidoreductase activity, acting on the CH-OH group of donors,\n NAD or NADP as acceptor"
+ )
+ tiff("NADOxRed.tif", unit = "cm", height = 15, width = 20, res = 300)
+ NADOxRed
+ 
  dev.off()
+ 
+ #####generate heatmap of NAD associated proteins####
+ group_anno <- openxlsx::read.xlsx(here::here("HNKO_NR_proteomics/annotation_oxRed.xlsx"), colNames = T)
+ group_anno <- group_anno %>% 
+   dplyr::filter(Group== "NAD" | Group == 'NAD/OxPhos' | Group == "NADP")
+ transporter_proteins <- group_anno$SYMBOL
+ 
+ 
+ expressions <- data.table::fread(here::here("HNKO_NR_proteomics/expressions.csv"), header = TRUE)
+ setup <- data.table::fread(here::here("HNKO_NR_proteomics/setup.csv"))
+ data.table::setnames(setup, c("sample", "Genotype", "Treatment"))
+ setup[, group:=paste(Genotype, Treatment, sep = "_")]
+ 
+ setup <- setup[sample != "330"]
+ #330 is the steatotic mouse
+ expressions <- expressions %>%
+   dplyr::select(!"330")
+ 
+ res <- limma::normalizeBetweenArrays(log(as.matrix(expressions[,-c(1:2)])), method = "quantile")
+ res <- as.data.frame(res)
+ res <- res %>% 
+   dplyr::mutate(Gene = expressions$Gene)
+ 
+ 
+ 
+ 
+ res_ox <- res %>% 
+   dplyr::filter(Gene %in% transporter_proteins) %>% 
+   dplyr::distinct(Gene, .keep_all = T) %>% 
+   dplyr::arrange(Gene)
+ rownames(res_ox) <- res_ox$Gene 
+ res_ox <- res_ox %>%
+   dplyr::select(-Gene)
+ 
+ setup_ordered <- setup
+ setup_ordered <- setup_ordered %>%
+   dplyr::mutate(
+     group = dplyr::case_when(
+       group == "WT_Control" ~ "WT Control",
+       group == "KO_Control" ~ "HNKO Control",
+       group == "WT_NR" ~ "WT NR",
+       group == "KO_NR" ~ "HNKO NR"
+     )
+   )
+ order <- c("WT Control", "HNKO Control", "WT NR", "HNKO NR")
+ 
+ 
+ setup_ordered <- setup_ordered %>% 
+   dplyr::arrange(Treatment,desc(Genotype))
+ 
+ class(colnames(res_ox))
+ setup_ordered$sample <- as.character(setup_ordered$sample)
+ res_ox <- res_ox %>% 
+   dplyr::select(setup_ordered$sample)
+ 
+ 
+ setup_ordered <- setup_ordered %>% 
+   dplyr::filter(!sample == 330)
+ key <- as.data.frame(setup_ordered)
+ 
+ key <- key %>% 
+   dplyr::select(group)
+ rownames(key) <- setup_ordered$sample
+ key$group <- factor(key$group, c("WT Control", "HNKO Control", "WT NR", "HNKO NR"))
+ 
 
+ 
+ NADAsso <- pheatmap::pheatmap(res_ox,
+                                treeheight_col = 0,
+                                treeheight_row = 0,
+                                scale = "row",
+                                legend = T,
+                                na_col = "white",
+                                Colv = NA,
+                                na.rm = T,
+                                cluster_cols = F,
+                                cluster_rows = F,
+                                fontsize_row = 8,
+                                fontsize_col = 8,
+                                cellwidth = 10,
+                                cellheight = 8,
+                                annotation_col = key,
+                                show_colnames = F,
+                                show_rownames = T,
+                                main = "NAD/NADP associated proteins"
+ )
+  tiff("NADAssociatedProt.tif", unit = "cm", height = 15, width = 20, res = 300)
+  NADAsso
+   
+   dev.off()
+   
+
+#####heatmap for OxPhos classified proteins#####
+ group_anno <- openxlsx::read.xlsx(here::here("HNKO_NR_proteomics/annotation_oxRed.xlsx"), colNames = T)
+ group_anno <- group_anno %>% 
+   dplyr::filter(Group== "OxPhos" | Group == 'NAD/OxPhos')
+ transporter_proteins <- group_anno$SYMBOL
+ 
+ 
+ expressions <- data.table::fread(here::here("HNKO_NR_proteomics/expressions.csv"), header = TRUE)
+ setup <- data.table::fread(here::here("HNKO_NR_proteomics/setup.csv"))
+ data.table::setnames(setup, c("sample", "Genotype", "Treatment"))
+ setup[, group:=paste(Genotype, Treatment, sep = "_")]
+ 
+ setup <- setup[sample != "330"]
+ #330 is the steatotic mouse
+ expressions <- expressions %>%
+   dplyr::select(!"330")
+ 
+ res <- limma::normalizeBetweenArrays(log(as.matrix(expressions[,-c(1:2)])), method = "quantile")
+ res <- as.data.frame(res)
+ res <- res %>% 
+   dplyr::mutate(Gene = expressions$Gene)
+ 
+ 
+ 
+ 
+ res_ox <- res %>% 
+   dplyr::filter(Gene %in% transporter_proteins) %>% 
+   dplyr::distinct(Gene, .keep_all = T) %>% 
+   dplyr::arrange(Gene)
+ rownames(res_ox) <- res_ox$Gene 
+ res_ox <- res_ox %>%
+   dplyr::select(-Gene)
+ 
+ setup_ordered <- setup
+ setup_ordered <- setup_ordered %>%
+   dplyr::mutate(
+     group = dplyr::case_when(
+       group == "WT_Control" ~ "WT Control",
+       group == "KO_Control" ~ "HNKO Control",
+       group == "WT_NR" ~ "WT NR",
+       group == "KO_NR" ~ "HNKO NR"
+     )
+   )
+ order <- c("WT Control", "HNKO Control", "WT NR", "HNKO NR")
+ 
+ 
+ setup_ordered <- setup_ordered %>% 
+   dplyr::arrange(Treatment,desc(Genotype))
+ 
+ class(colnames(res_ox))
+ setup_ordered$sample <- as.character(setup_ordered$sample)
+ res_ox <- res_ox %>% 
+   dplyr::select(setup_ordered$sample)
+ 
+ 
+ setup_ordered <- setup_ordered %>% 
+   dplyr::filter(!sample == 330)
+ key <- as.data.frame(setup_ordered)
+ 
+ key <- key %>% 
+   dplyr::select(group)
+ rownames(key) <- setup_ordered$sample
+ key$group <- factor(key$group, c("WT Control", "HNKO Control", "WT NR", "HNKO NR"))
+ 
+ 
+ 
+ NADOxPhos <- pheatmap::pheatmap(res_ox,
+                               treeheight_col = 0,
+                               treeheight_row = 0,
+                               scale = "row",
+                               legend = T,
+                               na_col = "white",
+                               Colv = NA,
+                               na.rm = T,
+                               cluster_cols = F,
+                               cluster_rows = F,
+                               fontsize_row = 8,
+                               fontsize_col = 8,
+                               cellwidth = 10,
+                               cellheight = 8,
+                               annotation_col = key,
+                               show_colnames = F,
+                               show_rownames = T,
+                               main = "OxPhos Proteins"
+ )
+  tiff("NADOxPhos.tif", unit = "cm", height = 15, width = 20, res = 300)
+  NADOxPhos
+   
+   dev.off()
+ #  

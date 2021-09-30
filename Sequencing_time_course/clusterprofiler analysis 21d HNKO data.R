@@ -128,7 +128,7 @@ overlap_bg = bitr(edgeR_data[[1]]$SYMBOL,
 goResults_overlap <- enrichGO(gene = overlap_entrez$ENTREZID,
                                      universe = overlap_bg$ENTREZID,
                                      OrgDb = org.Mm.eg.db,
-                                     ont = "BP")
+                                     ont = "MF")
 rnaGO <- enrichplot::dotplot(goResults_overlap)+ggtitle("Overlap Genes GO-terms")
 
 tiff("GORNA.tif", unit = "cm", height = 10, width = 25, res = 300)
@@ -384,3 +384,52 @@ cpm_summary$Group <- factor(cpm_summary$Group, levels = c("WT_3","KO_3","WT_6","
 
 ggplot(subset(cpm_summary, Symbol == "Sirt1"), aes(Group, mean))+
   geom_col()
+
+#####Filtering and visualizing ck7, EpcAm and NCAM####
+cpm_matrix <- openxlsx::read.xlsx(here::here("Sequencing_time_course/cpm_data/cpmData.xlsx"))
+setup <- openxlsx::read.xlsx(here::here("Sequencing_time_course/Setup_RNAseq.xlsx"))
+sample_ID <- openxlsx::read.xlsx(here::here("Sequencing_time_course/cpm_data/sampleID.xlsx"))
+sample_ID$'#'<-paste("022",sample_ID$'#',sep = "_")
+setup <- left_join(setup,sample_ID, by = c("ID"="Sample.ID"))
+
+cpm_candidates <- cpm_matrix %>% 
+  dplyr::filter(SYMBOL %in% c("Ncam1", "Epcam", "Krt7"))
+cpm_cand_long <-cpm_candidates %>% 
+  dplyr::select(-ENSEMBL, -GENENAME) %>% 
+  pivot_longer(cols = -SYMBOL, names_to = "ID", values_to = "CPM")
+cpm_cand_long$ID <- as.character(cpm_cand_long$ID)
+setup <- setup %>% 
+  dplyr::mutate(Genotype = case_when(
+    Genotype == "KO"~"HNKO",
+    Genotype == "WT"~"WT",
+    TRUE ~ as.character(Genotype)
+  )) %>% 
+  dplyr::mutate(Group = paste(Genotype, Time, sep = " "))
+cpm_joined <- dplyr::left_join(cpm_cand_long, setup, by = c("ID"="#"))
+cpm_joined$Group <- factor(cpm_joined$Group, levels = c("WT 3", "WT 6", "WT 12", "WT 21", "HNKO 3", "HNKO 6", "HNKO 12", "HNKO 21"))
+
+sum_stats <- cpm_joined%>% 
+  dplyr::select(SYMBOL, CPM, Group, Genotype) %>% 
+  group_by(SYMBOL, Group) %>% 
+  rstatix::get_summary_stats(type = "mean_sd")
+Ncam_data <-  subset(sum_stats, SYMBOL == "Ncam1")
+Ncam <- ggplot2::ggplot()+
+  geom_bar(data = subset(sum_stats, SYMBOL == "Ncam1"), aes(x = Group, y = mean), stat = "identity")+
+  geom_point(data = subset(cpm_joined, SYMBOL == "Ncam1"), aes(x = Group, y = CPM, color = Genotype))+
+  geom_errorbar(data = subset(sum_stats, SYMBOL == "Ncam1"), aes(x = Group, y = mean, ymin = mean-sd, ymax = mean+sd), stat = "identity")+
+  ggtitle("Ncam")
+
+Epcam <- ggplot2::ggplot()+
+  geom_bar(data = subset(sum_stats, SYMBOL == "Epcam"), aes(x = Group, y = mean), stat = "identity")+
+  geom_point(data = subset(cpm_joined, SYMBOL == "Epcam"), aes(x = Group, y = CPM, color = Genotype))+
+  geom_errorbar(data = subset(sum_stats, SYMBOL == "Epcam"), aes(x = Group, y = mean, ymin = mean-sd, ymax = mean+sd), stat = "identity")+
+  ggtitle("Epcam")
+
+Krt7 <- ggplot2::ggplot()+
+  geom_bar(data = subset(sum_stats, SYMBOL == "Krt7"), aes(x = Group, y = mean), stat = "identity")+
+  geom_point(data = subset(cpm_joined, SYMBOL == "Krt7"), aes(x = Group, y = CPM, color = Genotype))+
+  geom_errorbar(data = subset(sum_stats, SYMBOL == "Krt7"), aes(x = Group, y = mean, ymin = mean-sd, ymax = mean+sd), stat = "identity")+
+  ggtitle("Krt7")
+
+(Ncam+Epcam)/(Krt7+patchwork::plot_spacer())
+

@@ -136,16 +136,21 @@ for (i in 1:4){
 } 
 
 order_upset <- c("HNKO 21d", "HNKO 12d", "HNKO 6d","HNKO 3d")
-upsetProt <-UpSetR::upset(fromList(proteomics_sig),
+upsetProt <-UpSetR::upset(UpSetR::fromList(proteomics_sig),
               sets = order_upset,
               order.by = "freq", 
               keep.order = T,
-              text.scale = 3.5,
-)
+              text.scale = 3.5)
+upsetProt <- ggplotify::as.ggplot(upsetProt)
+upsetProt <- upsetProt + ggplot2::ggtitle("Proteins with effect of genotype")+ggplot2::theme(plot.title = element_text(size = 30,
+                                                                                                                  hjust = 0.5,
+                                                                                                                  vjust = 0.95))
+                                        
+#saveRDS(upsetProt, here::here("Sequencing_time_course/proteinUpset.RDS"))
 #tiff("UpsetProtein.tif", unit = "cm", height = 25, width = 35, res = 300)
-upsetProt
 
-grid::grid.text("Proteins with effect of genotype", x=0.65, y = 0.95, gp=grid::gpar(fontsize = 30))
+
+
 dev.off()
 #GO for overlap genes
 overlap_genes <- as.data.frame(proteomics_sig[[1]]) %>%
@@ -173,10 +178,10 @@ overlap_bg = bitr(resultTables_proteomics[[1]]$Gene,
 goResults_overlap <- enrichGO(gene = overlap_entrez$ENTREZID,
                               universe = overlap_bg$ENTREZID,
                               OrgDb = org.Mm.eg.db,
-                              ont = "BP")
+                              ont = "MF")
 protGO <- enrichplot::dotplot(goResults_overlap)+ggtitle("Overlap Proteins GO-terms")
-
-tiff("GOProt.tif", unit = "cm", height = 10, width = 25, res = 300)
+#saveRDS(protGO, here::here("Sequencing_time_course/protGO.RDS"))
+tiff("GOProt_MF.tif", unit = "cm", height = 10, width = 25, res = 300)
 
 protGO
 dev.off()
@@ -312,10 +317,10 @@ overlap_bg = bitr(resultTables_proteomics[[1]]$Gene,
 goResults_main_proteins<- enrichGO(gene = main_proteins$ENTREZID,
                                      universe = overlap_bg$ENTREZID,
                                      OrgDb = org.Mm.eg.db,
-                                     ont = "BP")
+                                     ont = "MF")
 plot <- enrichplot::dotplot(goResults_main_proteins)+ggtitle("Proteins with main effect of genotype")
 
-tiff("OxRed.tif", unit = "cm", height = 10, width = 25, res = 300)
+tiff("GoMFMainGeno.tif", unit = "cm", height = 10, width = 25, res = 300)
 plot
 
 dev.off()
